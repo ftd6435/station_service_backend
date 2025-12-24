@@ -12,26 +12,53 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
+
             $table->id();
-            $table->string('name', length: 100);
-            $table->string('image', length: 100)->nullable();
-            $table->string('telephone', length: 30)->nullable();
-            $table->string('adresse', length: 100)->nullable();
-            $table->string('email', length: 100)->unique();
-            $table->enum('role', ['super_admin', 'admin', 'user'])->default('user');
+
+            // Identité
+            $table->string('name', 100);
+            $table->string('image', 150)->nullable();
+
+            // Coordonnées
+            $table->string('telephone', 30)->nullable();
+            $table->string('adresse', 150)->nullable();
+
+            // Auth
+            $table->string('email', 100)->unique()->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+
+            // Rôle & statut
+            $table->enum('role', [
+                'super_admin',
+                'admin',
+                'user'
+                ,
+            ])->default('user');
+            $table->foreignId('created_by')->nullable()->constrained('users')->cascadeOnDelete();
+            $table->foreignId('modify_by')->nullable()->constrained('users')->cascadeOnDelete();
+
             $table->boolean('status')->default(true);
+
+           
+           
+            // Audit
             $table->rememberToken();
             $table->timestamps();
         });
 
+        /**
+         * Password reset tokens
+         */
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
             $table->string('token');
             $table->timestamp('created_at')->nullable();
         });
 
+        /**
+         * Sessions
+         */
         Schema::create('sessions', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->foreignId('user_id')->nullable()->index();
@@ -47,8 +74,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('users');
-        Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
+        Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('users');
     }
 };
