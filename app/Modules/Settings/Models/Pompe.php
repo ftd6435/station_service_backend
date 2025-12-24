@@ -2,22 +2,21 @@
 
 namespace App\Modules\Settings\Models;
 
-use App\Modules\Backoffice\Models\User;
+use App\Modules\Administration\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class Station extends Model
+class Pompe extends Model
 {
-    protected $table = 'stations';
+    protected $table = 'pompes';
 
     protected $fillable = [
         'libelle',
-        'code',
-        'adresse',
-        'latitude',
-        'longitude',
-        'id_ville',
+        'reference',
+        'type_pompe',
+        'index_initial',
+        'id_station',
         'status',
         'created_by',
         'modify_by',
@@ -27,17 +26,14 @@ class Station extends Model
     {
         static::creating(function ($m) {
 
-            // Audit
             if (Auth::check()) {
                 $m->created_by = Auth::id();
             }
 
-            // 🔹 Génération automatique du code station
-            if (empty($m->code)) {
-
-                $lastId = self::max('id') + 1;
-
-                $m->code = 'STAT-' . str_pad($lastId, 3, '0', STR_PAD_LEFT);
+            // Génération auto référence si null
+            if (empty($m->reference)) {
+                $nextId = self::max('id') + 1;
+                $m->reference = 'PMP-' . str_pad($nextId, 3, '0', STR_PAD_LEFT);
             }
         });
 
@@ -48,15 +44,9 @@ class Station extends Model
         });
     }
 
-    /**
-     * ============================
-     * Relations
-     * ============================
-     */
-
-    public function ville(): BelongsTo
+    public function station(): BelongsTo
     {
-        return $this->belongsTo(Ville::class, 'id_ville');
+        return $this->belongsTo(Station::class, 'id_station');
     }
 
     public function createdBy(): BelongsTo

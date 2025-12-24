@@ -1,6 +1,8 @@
 <?php
 
+use App\Modules\Settings\Controllers\ParametrageStationController;
 use App\Modules\Settings\Controllers\PaysController;
+use App\Modules\Settings\Controllers\PompeController;
 use App\Modules\Settings\Controllers\VilleController;
 use App\Modules\Settings\Controllers\StationController;
 use Illuminate\Support\Facades\Route;
@@ -8,7 +10,10 @@ Route::middleware(['station.db','auth:sanctum'])->prefix('v1/settings')->group(f
     Route::apiResource('pays',PaysController::class);
     Route::apiResource('villes', VilleController::class);
     Route::apiResource('stations', StationController::class);
-    Route::apiResource('params', VilleController::class);
+    Route::apiResource('params', ParametrageStationController::class);
+    Route::apiResource('pompes', PompeController::class);
+  
+
     
    
 });
