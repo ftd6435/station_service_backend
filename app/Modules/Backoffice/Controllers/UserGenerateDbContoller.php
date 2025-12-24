@@ -54,7 +54,8 @@ class UserGenerateDbContoller extends Controller
             $client->save();
 
             Licence::where('client_id', $client->id)->where('date_expiration', null)->update([
-                'date_expiration' => now()->addDays(30)
+                'date_expiration' => now()->addDays(7),
+                'days' => 7
             ]);
 
             $message = "Bonjour !\nVotre base de donnée a été créée avec succès.\nVous pouvez vous connecter maintenant en utilisant le code de votre entreprise et votre numéro de téléphone.\nMerci de nous avoir choisi.\nSPA Technology";
