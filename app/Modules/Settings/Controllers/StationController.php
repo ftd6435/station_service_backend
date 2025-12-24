@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Modules\Settings\Http\Controllers;
+namespace App\Modules\Settings\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Settings\Services\StationService;

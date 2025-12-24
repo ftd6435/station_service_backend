@@ -4,9 +4,9 @@ namespace App\Modules\Administration\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Administration\Services\UserService;
-use App\Modules\Administration\Http\Requests\StoreUserRequest;
-use App\Modules\Administration\Http\Requests\UpdateUserRequest;
-use App\Modules\Auth\Http\Requests\LoginRequest;
+use App\Modules\Administration\Requests\StoreUserRequest;
+use App\Modules\Administration\Requests\UpdateUserRequest;
+use App\Modules\Administration\Requests\LoginRequest;
 use Illuminate\Http\Request;
 
 class UserController extends Controller

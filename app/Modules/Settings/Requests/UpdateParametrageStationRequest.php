@@ -6,7 +6,7 @@ use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\ValidationException;
 
-class UpdatePaysRequest extends FormRequest
+class UpdateParametrageStationRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -16,16 +16,17 @@ class UpdatePaysRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'libelle' => 'required|string|max:255',
+            'h_ouvert' => 'sometimes|nullable|date_format:H:i',
+            'h_ferme'  => 'sometimes|nullable|date_format:H:i',
         ];
     }
 
-    protected function failedValidation(Validator $validator)
+    protected function failedValidation(Validator $v)
     {
-        throw new ValidationException($validator, response()->json([
+        throw new ValidationException($v, response()->json([
             'status'  => 'error',
             'message' => 'Erreur de validation',
-            'errors'  => $validator->errors(),
+            'errors'  => $v->errors(),
         ], 422));
     }
 }

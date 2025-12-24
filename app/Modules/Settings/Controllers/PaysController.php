@@ -3,8 +3,8 @@
 namespace App\Modules\Settings\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Settings\Http\Requests\StorePaysRequest;
-use App\Modules\Settings\Http\Requests\UpdatePaysRequest;
+use App\Modules\Settings\Requests\StorePaysRequest;
+use App\Modules\Settings\Requests\UpdatePaysRequest;
 use App\Modules\Settings\Services\PaysService;
 use Illuminate\Http\Request;
 
