@@ -7,6 +7,13 @@ use Illuminate\Support\Facades\Auth;
 
 class RoleFilterService
 {
+    /**
+     * Applique un filtrage basé UNIQUEMENT sur les relations métier
+     *
+     * Options :
+     * - station_relation : relation vers Station (ex: 'station')
+     * - pompiste_column  : colonne user (ex: 'id', 'id_pompiste')
+     */
     public static function apply(Builder $query, array $options = []): Builder
     {
         $user = Auth::user();
@@ -15,39 +22,48 @@ class RoleFilterService
             return $query->whereRaw('1 = 0');
         }
 
-        $stationColumn  = $options['station']  ?? 'id_station';
-        $pompisteColumn = $options['pompiste'] ?? 'id_pompiste';
-        $villeColumn    = $options['ville']    ?? null;
+        $stationRelation = $options['station_relation'] ?? 'station';
+        $pompisteColumn  = $options['pompiste_column']  ?? 'id_pompiste';
 
         switch ($user->role) {
 
-            // 🔥 VOIT TOUT
+            /**
+             * 🔥 SUPER ADMIN
+             * - aucune restriction
+             */
             case 'super_admin':
                 return $query;
 
-            // 🔵 SUPERVISEUR → SA VILLE
+            /**
+             * 🔵 SUPERVISEUR
+             * - voit tout ce qui se passe dans SA VILLE
+             * - filtrage via relation station → ville
+             */
             case 'superviseur':
-
-                // Si la table contient directement id_ville
-                if ($villeColumn) {
-                    return $query->where($villeColumn, $user->station->id_ville);
-                }
-
-                // Sinon via relation station
-                return $query->whereHas('station', function ($q) use ($user) {
+                return $query->whereHas($stationRelation, function ($q) use ($user) {
                     $q->where('id_ville', $user->station->id_ville);
                 });
 
-            // 🟡 ADMIN / GERANT → SA STATION
+            /**
+             * 🟡 ADMIN / GERANT
+             * - voit uniquement SA STATION
+             */
             case 'admin':
             case 'gerant':
-                return $query->where($stationColumn, $user->id_station);
+                return $query->whereHas($stationRelation, function ($q) use ($user) {
+                    $q->where('id', $user->id_station);
+                });
 
-            // 🔴 POMPISTE → LUI-MÊME UNIQUEMENT
+            /**
+             * 🔴 POMPISTE
+             * - voit uniquement SES DONNÉES
+             */
             case 'pompiste':
                 return $query->where($pompisteColumn, $user->id);
 
-            // ❌ AUTRES → RIEN
+            /**
+             * ❌ AUTRES
+             */
             default:
                 return $query->whereRaw('1 = 0');
         }

@@ -22,14 +22,14 @@ class UserService
     {
         try {
 
-            // 🔹 Requête de base
+            // 🔹 Requête de base (relations nécessaires)
             $query = User::with(['station', 'createdBy', 'modifiedBy'])
                 ->orderBy('name');
 
-            // 🔹 Application du filtrage par rôle
+            // 🔹 Application du filtrage par rôle (BASÉ SUR LES RELATIONS)
             $query = RoleFilterService::apply($query, [
-                'station'  => 'id_station', // colonne station dans users
-                'pompiste' => 'id',         // pour le rôle pompiste (lui-même)
+                'station_relation' => 'station', // relation User → Station
+                'pompiste_column'  => 'id',      // pompiste ne voit que lui-même
             ]);
 
             // 🔹 Exécution
