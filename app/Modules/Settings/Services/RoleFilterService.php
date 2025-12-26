@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Modules\Settings\Services;
 
 use Illuminate\Database\Eloquent\Builder;
@@ -9,11 +8,7 @@ use Illuminate\Support\Facades\Schema;
 class RoleFilterService
 {
     /**
-     * Applique un filtrage sécurisé basé sur le rôle
-     *
-     * Options possibles :
-     * - station_relation : string|null  (ex: 'station')
-     * - pompiste_column  : string|null  (ex: 'id_pompiste')
+     * Filtrage centralisé basé sur le rôle et les relations métier
      */
     public static function apply(Builder $query, array $options = []): Builder
     {
@@ -27,21 +22,21 @@ class RoleFilterService
         $table = $model->getTable();
 
         $stationRelation = $options['station_relation'] ?? null;
-        $pompisteColumn  = $options['pompiste_column']  ?? null;
+        $pompisteColumn  = $options['pompiste_column'] ?? null;
 
         switch ($user->role) {
 
             /**
-             * 🔥 SUPER ADMIN
-             * - aucune restriction
-             */
+                 * 🔥 SUPER ADMIN
+                 */
             case 'super_admin':
                 return $query;
 
             /**
-             * 🔵 SUPERVISEUR
-             * - filtrage via relation station → ville
-             */
+                 * 🔵 ADMIN & SUPERVISEUR
+                 * - visibilité sur TOUTE la ville
+                 */
+            case 'admin':
             case 'superviseur':
 
                 if (
@@ -57,10 +52,9 @@ class RoleFilterService
                 });
 
             /**
-             * 🟡 ADMIN / GERANT
-             * - uniquement sa station
-             */
-            case 'admin':
+                 * 🟠 GERANT
+                 * - visibilité sur SA station uniquement
+                 */
             case 'gerant':
 
                 if (
@@ -76,10 +70,9 @@ class RoleFilterService
                 });
 
             /**
-             * 🔴 POMPISTE
-             * - UNIQUEMENT ses données personnelles
-             * - jamais sur stations
-             */
+                 * 🔴 POMPISTE
+                 * - UNIQUEMENT ses données personnelles
+                 */
             case 'pompiste':
 
                 if (
@@ -92,8 +85,8 @@ class RoleFilterService
                 return $query->where($pompisteColumn, $user->id);
 
             /**
-             * ❌ AUTRES RÔLES
-             */
+                 * ❌ AUTRES
+                 */
             default:
                 return $query->whereRaw('1 = 0');
         }
