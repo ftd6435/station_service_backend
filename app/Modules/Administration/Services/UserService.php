@@ -3,6 +3,7 @@ namespace App\Modules\Administration\Services;
 
 use App\Modules\Administration\Models\User;
 use App\Modules\Administration\Resources\UserResource;
+use App\Modules\Settings\Services\RoleFilterService;
 use App\Traits\ImageUpload;
 use Exception;
 use Illuminate\Support\Facades\Hash;
@@ -16,13 +17,23 @@ class UserService
      * Liste des utilisateurs
      * ============================
      */
+
     public function getAll()
     {
         try {
 
-            $users = User::with(['station', 'createdBy', 'modifiedBy'])
-                ->orderBy('name')
-                ->get();
+            // 🔹 Requête de base
+            $query = User::with(['station', 'createdBy', 'modifiedBy'])
+                ->orderBy('name');
+
+            // 🔹 Application du filtrage par rôle
+            $query = RoleFilterService::apply($query, [
+                'station'  => 'id_station', // colonne station dans users
+                'pompiste' => 'id',         // pour le rôle pompiste (lui-même)
+            ]);
+
+            // 🔹 Exécution
+            $users = $query->get();
 
             return response()->json([
                 'status' => 200,
