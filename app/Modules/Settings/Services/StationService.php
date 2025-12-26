@@ -9,35 +9,50 @@ use Exception;
 class StationService
 {
 
-    public function getAll()
-    {
-        try {
+    
 
-            // 🔹 Requête de base avec les relations nécessaires
-            $query = Station::with(['ville', 'createdBy', 'modifiedBy']);
 
-            // 🔹 Application du filtrage par rôle (centralisé)
-            $query = RoleFilterService::apply($query, [
-                'station' => 'id', // car on filtre directement sur stations.id
-            ]);
 
-            // 🔹 Exécution de la requête
-            $stations = $query->get();
+public function getAll()
+{
+    try {
 
-            return response()->json([
-                'status' => 200,
-                'data'   => StationResource::collection($stations),
-            ]);
+        // 🔹 Requête de base avec TOUTES les relations nécessaires
+        $query = Station::with([
+            'ville',
+            'pompes',        // ✅ pompes de la station
+            'createdBy',
+            'modifiedBy',
+        ]);
 
-        } catch (Exception $e) {
+        /**
+         * 🔹 Filtrage par rôle (relation-based)
+         *
+         * - super_admin  → toutes les stations + leurs pompes
+         * - superviseur  → stations de sa ville + leurs pompes
+         * - admin/gerant → sa station + ses pompes
+         * - pompiste     → aucune station
+         */
+        $query = RoleFilterService::apply($query);
 
-            return response()->json([
-                'status'  => 500,
-                'message' => 'Erreur lors de la récupération des stations.',
-                'error'   => $e->getMessage(),
-            ]);
-        }
+        // 🔹 Exécution
+        $stations = $query->get();
+
+        return response()->json([
+            'status' => 200,
+            'data'   => StationResource::collection($stations),
+        ]);
+
+    } catch (Exception $e) {
+
+        return response()->json([
+            'status'  => 500,
+            'message' => 'Erreur lors de la récupération des stations.',
+            'error'   => $e->getMessage(),
+        ]);
     }
+}
+
 
     public function store(array $data)
     {

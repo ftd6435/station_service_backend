@@ -57,5 +57,12 @@ class Pompe extends Model
     public function modifiedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'modify_by');
+
+    }
+    
+     // 🔹 Station → Pompes
+    public function pompes()
+    {
+        return $this->hasMany(Pompe::class, 'id_station');
     }
 }
