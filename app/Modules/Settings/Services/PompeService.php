@@ -15,7 +15,7 @@ class PompeService
             // 🔹 Requête SIMPLE
             // Le filtrage par rôle est AUTOMATIQUE via le Global Scope du modèle Pompe
             $pompes = Pompe::with([
-                'station',
+                'station.ville',
                 'createdBy',
                 'modifiedBy',
             ])
