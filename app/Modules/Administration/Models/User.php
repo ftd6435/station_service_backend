@@ -2,6 +2,7 @@
 namespace App\Modules\Administration\Models;
 
 use App\Modules\Settings\Models\Station;
+use App\Modules\Settings\Models\Ville;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,6 +27,7 @@ class User extends Authenticatable
         'image',
         'role',
         'id_station',
+        'id_ville',
         'status',
         'password',
 
@@ -199,4 +201,10 @@ class User extends Authenticatable
     {
         return $this->belongsTo(self::class, 'modify_by');
     }
+
+    public function ville(): BelongsTo
+    {
+        return $this->belongsTo(Ville::class, 'id_ville');
+    }
+
 }
