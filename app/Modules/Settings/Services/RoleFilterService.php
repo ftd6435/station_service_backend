@@ -1,62 +1,53 @@
 <?php
 
-// Namespace du service, placé dans le module Settings
 namespace App\Modules\Settings\Services;
 
-// Import du Builder Eloquent pour typer la requête
 use Illuminate\Database\Eloquent\Builder;
-
-// Import de la façade Auth pour récupérer l'utilisateur connecté
 use Illuminate\Support\Facades\Auth;
 
 class RoleFilterService
 {
-    /**
-     * Applique le filtrage des données en fonction du rôle de l'utilisateur connecté
-     *
-     * @param Builder $query   Requête Eloquent à filtrer
-     * @param array   $options Options permettant de préciser les colonnes
-     *
-     * @return Builder         Requête filtrée
-     */
     public static function apply(Builder $query, array $options = []): Builder
     {
-        // Récupération de l'utilisateur actuellement authentifié
         $user = Auth::user();
 
-        // Sécurité : si aucun utilisateur n'est connecté,
-        // on retourne une requête vide (aucune donnée)
         if (! $user) {
             return $query->whereRaw('1 = 0');
         }
 
-        // Nom de la colonne représentant la station
-        // Par défaut : id_station
-        $stationColumn = $options['station'] ?? 'id_station';
-
-        // Nom de la colonne représentant l'utilisateur (pompiste)
-        // Par défaut : id_pompiste
+        $stationColumn  = $options['station']  ?? 'id_station';
         $pompisteColumn = $options['pompiste'] ?? 'id_pompiste';
+        $villeColumn    = $options['ville']    ?? null;
 
-        // Filtrage selon le rôle de l'utilisateur
         switch ($user->role) {
 
-            // Le super administrateur voit toutes les données
+            // 🔥 VOIT TOUT
             case 'super_admin':
                 return $query;
 
-            // Les rôles admin, gérant et superviseur
-            // voient uniquement les données de leur station
+            // 🔵 SUPERVISEUR → SA VILLE
+            case 'superviseur':
+
+                // Si la table contient directement id_ville
+                if ($villeColumn) {
+                    return $query->where($villeColumn, $user->station->id_ville);
+                }
+
+                // Sinon via relation station
+                return $query->whereHas('station', function ($q) use ($user) {
+                    $q->where('id_ville', $user->station->id_ville);
+                });
+
+            // 🟡 ADMIN / GERANT → SA STATION
             case 'admin':
             case 'gerant':
-            case 'superviseur':
                 return $query->where($stationColumn, $user->id_station);
 
-            // Le pompiste ne voit que ses propres données
+            // 🔴 POMPISTE → LUI-MÊME UNIQUEMENT
             case 'pompiste':
                 return $query->where($pompisteColumn, $user->id);
 
-            // Sécurité : tout autre rôle non prévu ne voit rien
+            // ❌ AUTRES → RIEN
             default:
                 return $query->whereRaw('1 = 0');
         }
