@@ -16,7 +16,8 @@ class StoreVilleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'libelle' => 'required|string|max:255',
+           'libelle' => 'required|string|max:255|unique:stations,libelle',
+
             'id_pays' => 'required|exists:pays,id',
         ];
     }
