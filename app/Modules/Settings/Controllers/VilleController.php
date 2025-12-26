@@ -3,8 +3,8 @@
 namespace App\Modules\Settings\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Settings\Http\Requests\StoreVilleRequest;
-use App\Modules\Settings\Http\Requests\UpdateVilleRequest;
+use App\Modules\Settings\Requests\StoreVilleRequest;
+use App\Modules\Settings\Requests\UpdateVilleRequest;
 use App\Modules\Settings\Services\VilleService;
 
 class VilleController extends Controller

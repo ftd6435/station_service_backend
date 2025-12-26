@@ -1,18 +1,28 @@
 <?php
-
 namespace App\Modules\Settings\Services;
 
 use App\Modules\Settings\Models\Station;
 use App\Modules\Settings\Resources\StationResource;
+use App\Modules\Settings\Services\RoleFilterService;
 use Exception;
 
 class StationService
 {
+
     public function getAll()
     {
         try {
 
-            $stations = Station::with(['ville','createdBy','modifiedBy'])->get();
+            // 🔹 Requête de base avec les relations nécessaires
+            $query = Station::with(['ville', 'createdBy', 'modifiedBy']);
+
+            // 🔹 Application du filtrage par rôle (centralisé)
+            $query = RoleFilterService::apply($query, [
+                'station' => 'id', // car on filtre directement sur stations.id
+            ]);
+
+            // 🔹 Exécution de la requête
+            $stations = $query->get();
 
             return response()->json([
                 'status' => 200,
