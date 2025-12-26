@@ -13,25 +13,23 @@ class StationService
     {
         try {
 
-            // 🔹 Requête de base avec TOUTES les relations nécessaires
+            // 🔹 Requête de base avec les relations nécessaires
             $query = Station::with([
                 'ville',
-                'pompes', // ✅ pompes de la station
+                'pompes',
                 'createdBy',
                 'modifiedBy',
             ]);
 
             /**
-             * 🔹 Filtrage par rôle (relation-based)
+             * 🔹 Filtrage par rôle
              *
-             * - super_admin  → toutes les stations + leurs pompes
-             * - superviseur  → stations de sa ville + leurs pompes
-             * - admin/gerant → sa station + ses pompes
+             * - super_admin  → toutes les stations
+             * - superviseur  → stations de sa ville
+             * - admin/gerant → sa station
              * - pompiste     → aucune station
              */
-            $query = RoleFilterService::apply($query, [
-                'station_relation' => null,
-            ]);
+            $query = RoleFilterService::apply($query);
 
             // 🔹 Exécution
             $stations = $query->get();
@@ -41,7 +39,7 @@ class StationService
                 'data'   => StationResource::collection($stations),
             ]);
 
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
 
             return response()->json([
                 'status'  => 500,
