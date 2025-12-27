@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Modules\Settings\Models;
 
 use App\Modules\Administration\Models\User;
@@ -39,7 +38,6 @@ class Pompe extends Model
 
             $user = Auth::user();
 
-            // Aucun utilisateur connecté → aucune donnée
             if (! $user) {
                 $query->whereRaw('1 = 0');
                 return;
@@ -48,33 +46,48 @@ class Pompe extends Model
             switch ($user->role) {
 
                 /**
-                 * 🔥 SUPER ADMIN
-                 * → voit toutes les pompes
-                 */
+                     * 🔥 SUPER ADMIN
+                     */
                 case 'super_admin':
                     break;
 
                 /**
-                 * 🔵 ADMIN / SUPERVISEUR
-                 * → pompes des stations de leur ville
-                 */
+                     * 🔵 ADMIN
+                     * → pompes des stations de la ville de SA station
+                     */
                 case 'admin':
-                case 'superviseur':
 
-                    if (! $user->station) {
+                    if (! $user->station || ! $user->station->id_ville) {
                         $query->whereRaw('1 = 0');
                         return;
                     }
 
-                    $query->whereHas('station', function ($q) use ($user) {
+                    $query->whereHas('station', function (Builder $q) use ($user) {
                         $q->where('id_ville', $user->station->id_ville);
                     });
                     break;
 
                 /**
-                 * 🟡 GÉRANT
-                 * → pompes de sa station
-                 */
+                     * 🟣 SUPERVISEUR
+                     * → pompes des stations de SA ville
+                     * (ville directe via users.id_ville)
+                     */
+                case 'superviseur':
+
+                    if (! $user->id_ville) {
+                        $query->whereRaw('1 = 0');
+                        return;
+                    }
+
+                    $query->whereHas('station', function (Builder $q) use ($user) {
+                        $q->where('id_ville', $user->id_ville);
+                    });
+                    break;
+
+                /**
+                     * 🟡 GÉRANT
+                     * → pompes de sa station
+                     */
                 case 'gerant':
 
                     if (! $user->id_station) {
@@ -86,9 +99,9 @@ class Pompe extends Model
                     break;
 
                 /**
-                 * 🔴 POMPISTE
-                 * → aucune pompe (accès via affectations uniquement)
-                 */
+                     * 🔴 POMPISTE
+                     * → aucune pompe (via affectations seulement)
+                     */
                 default:
                     $query->whereRaw('1 = 0');
             }
@@ -107,7 +120,7 @@ class Pompe extends Model
 
             // 🔹 Génération automatique de la référence pompe
             if (empty($m->reference)) {
-                $nextId = self::withoutGlobalScopes()->max('id') + 1;
+                $nextId       = self::withoutGlobalScopes()->max('id') + 1;
                 $m->reference = 'PMP-' . str_pad($nextId, 3, '0', STR_PAD_LEFT);
             }
         });
