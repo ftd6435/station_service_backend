@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Modules\Settings\Models;
 
 use App\Modules\Administration\Models\User;
@@ -41,7 +40,6 @@ class Station extends Model
 
             $user = Auth::user();
 
-            // Aucun utilisateur → aucune donnée
             if (! $user) {
                 $query->whereRaw('1 = 0');
                 return;
@@ -50,20 +48,18 @@ class Station extends Model
             switch ($user->role) {
 
                 /**
-                 * 🔥 SUPER ADMIN
-                 * → voit toutes les stations
-                 */
+                     * 🔥 SUPER ADMIN
+                     */
                 case 'super_admin':
                     break;
 
                 /**
-                 * 🔵 ADMIN / SUPERVISEUR
-                 * → stations de leur ville
-                 */
+                     * 🔵 ADMIN
+                     * → stations de la ville de SA station
+                     */
                 case 'admin':
-                case 'superviseur':
 
-                    if (! $user->station) {
+                    if (! $user->station || ! $user->station->id_ville) {
                         $query->whereRaw('1 = 0');
                         return;
                     }
@@ -72,9 +68,24 @@ class Station extends Model
                     break;
 
                 /**
-                 * 🟡 GÉRANT
-                 * → uniquement sa station
-                 */
+                     * 🟣 SUPERVISEUR
+                     * → stations de SA ville
+                     * (ville directe via users.id_ville)
+                     */
+                case 'superviseur':
+
+                    if (! $user->id_ville) {
+                        $query->whereRaw('1 = 0');
+                        return;
+                    }
+
+                    $query->where('id_ville', $user->id_ville);
+                    break;
+
+                /**
+                     * 🟡 GÉRANT
+                     * → uniquement sa station
+                     */
                 case 'gerant':
 
                     if (! $user->id_station) {
@@ -86,9 +97,9 @@ class Station extends Model
                     break;
 
                 /**
-                 * 🔴 POMPISTE
-                 * → aucune station
-                 */
+                     * 🔴 POMPISTE
+                     * → aucune station
+                     */
                 default:
                     $query->whereRaw('1 = 0');
             }
