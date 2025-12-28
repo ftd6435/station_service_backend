@@ -3,24 +3,33 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
+        // 🔒 Vérification directe côté MySQL
+        $fkExists = DB::selectOne("
+            SELECT CONSTRAINT_NAME
+            FROM information_schema.KEY_COLUMN_USAGE
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'users'
+              AND COLUMN_NAME = 'id_ville'
+              AND CONSTRAINT_NAME = 'users_id_ville_foreign'
+        ");
 
-            /**
-             * ⚠️ id_ville AJOUTÉ MANUELLEMENT
-             * → on ne crée JAMAIS la colonne ici
-             * → FK uniquement si absente
-             */
-            if (Schema::hasColumn('users', 'id_ville')) {
-                $table->foreign('id_ville')
-                      ->references('id')
-                      ->on('villes')
-                      ->nullOnDelete();
-            }
+        // ➜ FK déjà présente → on ne fait RIEN
+        if ($fkExists) {
+            return;
+        }
+
+        // ➜ FK absente → on l’ajoute
+        Schema::table('users', function (Blueprint $table) {
+            $table->foreign('id_ville')
+                  ->references('id')
+                  ->on('villes')
+                  ->nullOnDelete();
         });
     }
 
@@ -28,7 +37,6 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->dropForeign(['id_ville']);
-            // ❌ on ne supprime PAS la colonne
         });
     }
 };
