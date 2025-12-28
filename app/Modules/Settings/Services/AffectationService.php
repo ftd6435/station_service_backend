@@ -20,7 +20,7 @@ class AffectationService
         $affectations = Affectation::visible()
             ->with([
                 'user',        // ✅ UserResource
-                'station',     // ✅ StationResource
+                'station.ville.pays',     // ✅ StationResource
                 'pompe',       // ✅ PompeResource
                 'createdBy',
                 'modifiedBy',
