@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Modules\Administration\Models;
 
 use App\Modules\Settings\Models\Station;
@@ -13,9 +14,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasFactory;
-    use Notifiable;
-    use HasApiTokens;
+    use HasFactory, Notifiable, HasApiTokens;
 
     protected $table = 'users';
 
@@ -30,8 +29,6 @@ class User extends Authenticatable
         'id_ville',
         'status',
         'password',
-
-        // audit
         'created_by',
         'modify_by',
     ];
@@ -45,93 +42,17 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'status'            => 'boolean',
+            'status' => 'boolean',
         ];
     }
 
     /**
      * =================================================
-     * BOOT : filtrage global par rôle + audit
+     * BOOT : AUDIT UNIQUEMENT
      * =================================================
      */
     protected static function booted(): void
     {
-        /*
-        |--------------------------------------------------------------------------
-        | GLOBAL SCOPE : VISIBILITÉ DES UTILISATEURS
-        |--------------------------------------------------------------------------
-        */
-        static::addGlobalScope('role_scope', function (Builder $query) {
-
-            $auth = Auth::user();
-
-            // Aucun utilisateur connecté → aucune donnée
-            if (! $auth) {
-                $query->whereRaw('1 = 0');
-                return;
-            }
-
-            switch ($auth->role) {
-
-                /**
-                 * 🔥 SUPER ADMIN
-                 * → voit tous les utilisateurs
-                 */
-                case 'super_admin':
-                    break;
-
-                /**
-                 * 🔵 ADMIN / SUPERVISEUR
-                 * → utilisateurs des stations de leur ville
-                 */
-                case 'admin':
-                case 'superviseur':
-
-                    if (! $auth->station) {
-                        $query->whereRaw('1 = 0');
-                        return;
-                    }
-
-                    $query->whereHas('station', function ($q) use ($auth) {
-                        $q->where('id_ville', $auth->station->id_ville);
-                    });
-                    break;
-
-                /**
-                 * 🟡 GÉRANT
-                 * → utilisateurs de SA station
-                 */
-                case 'gerant':
-
-                    if (! $auth->id_station) {
-                        $query->whereRaw('1 = 0');
-                        return;
-                    }
-
-                    $query->where('id_station', $auth->id_station);
-                    break;
-
-                /**
-                 * 🔴 POMPISTE
-                 * → uniquement lui-même
-                 */
-                case 'pompiste':
-                    $query->where('id', $auth->id);
-                    break;
-
-                /**
-                 * ❌ AUTRES CAS
-                 */
-                default:
-                    $query->whereRaw('1 = 0');
-            }
-        });
-
-        /*
-        |--------------------------------------------------------------------------
-        | AUDIT AUTOMATIQUE
-        |--------------------------------------------------------------------------
-        */
         static::creating(function ($m) {
             if (Auth::check()) {
                 $m->created_by = Auth::id();
@@ -145,79 +66,53 @@ class User extends Authenticatable
         });
     }
 
+    /**
+     * =================================================
+     * SCOPE LOCAL : VISIBILITÉ DES UTILISATEURS
+     * =================================================
+     */
     public function scopeVisible(Builder $query): Builder
     {
-        $auth = Auth::user();
+        $user = Auth::user();
 
-        if (! $auth) {
+        if (! $user) {
             return $query->whereRaw('1 = 0');
         }
 
-        switch ($auth->role) {
+        switch ($user->role) {
 
             /**
-                 * 🔥 SUPER ADMIN
-                 */
+             * 🔥 SUPER ADMIN
+             */
             case 'super_admin':
                 return $query;
 
             /**
-                 * 🔵 ADMIN
-                 * → utilisateurs des stations de sa ville
-                 * (ville déterminée via SA station)
-                 */
+             * 🔵 ADMIN
+             * 🟣 SUPERVISEUR
+             * 🟡 GÉRANT
+             * → utilisateurs de leur station
+             */
             case 'admin':
-
-                if (! $auth->station || ! $auth->station->id_ville) {
-                    return $query->whereRaw('1 = 0');
-                }
-
-                return $query->whereHas('station', function (Builder $q) use ($auth) {
-                    $q->where('id_ville', $auth->station->id_ville);
-                });
-
-            /**
-                 * 🟣 SUPERVISEUR
-                 * → utilisateurs de sa ville
-                 * (ville déterminée DIRECTEMENT depuis users.id_ville)
-                 */
             case 'superviseur':
-
-                if (! $auth->id_ville) {
-                    return $query->whereRaw('1 = 0');
-                }
-
-                return $query->where(function (Builder $q) use ($auth) {
-
-                    // utilisateurs appartenant aux stations de la ville
-                    $q->whereHas('station', function (Builder $sq) use ($auth) {
-                        $sq->where('id_ville', $auth->id_ville);
-                    })
-
-                    // + lui-même (superviseur sans station)
-                        ->orWhere('id', $auth->id);
-                });
-
-            /**
-                 * 🟡 GÉRANT
-                 */
             case 'gerant':
 
-                if (! $auth->id_station) {
+                if (! $user->id_station) {
                     return $query->whereRaw('1 = 0');
                 }
 
-                return $query->where('id_station', $auth->id_station);
+                return $query->where('id_station', $user->id_station);
 
             /**
-                 * 🔴 POMPISTE
-                 */
+             * 🔴 POMPISTE
+             * → lui-même uniquement
+             */
             case 'pompiste':
-                return $query->where('id', $auth->id);
+                return $query->where('id', $user->id);
 
             /**
-                 * ❌ AUTRES CAS
-                 */
+             * ❌ AUTRES CAS
+             */
             default:
                 return $query->whereRaw('1 = 0');
         }
@@ -225,21 +120,19 @@ class User extends Authenticatable
 
     /**
      * ============================
-     * Relations métier
+     * RELATIONS
      * ============================
      */
 
-    // Station à laquelle l’utilisateur appartient
     public function station(): BelongsTo
     {
         return $this->belongsTo(Station::class, 'id_station');
     }
 
-    /**
-     * ============================
-     * Relations audit (STANDARD)
-     * ============================
-     */
+    public function ville(): BelongsTo
+    {
+        return $this->belongsTo(Ville::class, 'id_ville');
+    }
 
     public function createdBy(): BelongsTo
     {
@@ -250,10 +143,4 @@ class User extends Authenticatable
     {
         return $this->belongsTo(self::class, 'modify_by');
     }
-
-    public function ville(): BelongsTo
-    {
-        return $this->belongsTo(Ville::class, 'id_ville');
-    }
-
 }

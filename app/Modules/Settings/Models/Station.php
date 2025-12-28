@@ -36,74 +36,7 @@ class Station extends Model
         | GLOBAL SCOPE : VISIBILITÉ PAR RÔLE
         |--------------------------------------------------------------------------
         */
-        static::addGlobalScope('role_scope', function (Builder $query) {
-
-            $user = Auth::user();
-
-            if (! $user) {
-                $query->whereRaw('1 = 0');
-                return;
-            }
-
-            switch ($user->role) {
-
-                /**
-                     * 🔥 SUPER ADMIN
-                     */
-                case 'super_admin':
-                    break;
-
-                /**
-                     * 🔵 ADMIN
-                     * → stations de la ville de SA station
-                     */
-                case 'admin':
-
-                    if (! $user->station || ! $user->station->id_ville) {
-                        $query->whereRaw('1 = 0');
-                        return;
-                    }
-
-                    $query->where('id_ville', $user->station->id_ville);
-                    break;
-
-                /**
-                     * 🟣 SUPERVISEUR
-                     * → stations de SA ville
-                     * (ville directe via users.id_ville)
-                     */
-                case 'superviseur':
-
-                    if (! $user->id_ville) {
-                        $query->whereRaw('1 = 0');
-                        return;
-                    }
-
-                    $query->where('id_ville', $user->id_ville);
-                    break;
-
-                /**
-                     * 🟡 GÉRANT
-                     * → uniquement sa station
-                     */
-                case 'gerant':
-
-                    if (! $user->id_station) {
-                        $query->whereRaw('1 = 0');
-                        return;
-                    }
-
-                    $query->where('id', $user->id_station);
-                    break;
-
-                /**
-                     * 🔴 POMPISTE
-                     * → aucune station
-                     */
-                default:
-                    $query->whereRaw('1 = 0');
-            }
-        });
+       
 
         /*
         |--------------------------------------------------------------------------
