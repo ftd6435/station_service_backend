@@ -4,15 +4,15 @@ namespace App\Modules\Settings\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Modules\Settings\Resources\PompeResource;
-use App\Modules\Settings\Resources\VilleResource;
-use App\Modules\Settings\Resources\AffectationResource;
 
 class StationResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
         return [
+            // =========================
+            // IDENTITÉ
+            // =========================
             'id'        => $this->id,
             'libelle'   => $this->libelle,
             'code'      => $this->code,
@@ -20,34 +20,68 @@ class StationResource extends JsonResource
             'latitude'  => $this->latitude,
             'longitude' => $this->longitude,
 
-            // 🔹 Paramétrage
+            // =========================
+            // PARAMÉTRAGE
+            // =========================
             'parametrage' => $this->whenLoaded(
                 'parametrage',
                 fn () => new ParametrageStationResource($this->parametrage)
             ),
 
-            // 🔹 Ville (via Resource)
+            // =========================
+            // VILLE
+            // =========================
             'ville' => $this->whenLoaded(
                 'ville',
                 fn () => new VilleResource($this->ville)
             ),
 
-            // 🔹 Pompes
+            // =========================
+            // POMPES
+            // =========================
             'pompes' => PompeResource::collection(
                 $this->whenLoaded('pompes')
             ),
 
-            // 🔹 Affectations de la station (HISTORIQUE COMPLET)
-            'affectations' => AffectationResource::collection(
-                $this->whenLoaded('affectations')
-            ),
+            // // =========================
+            // // AFFECTATIONS (HISTORIQUE)
+            // // =========================
+            // 'affectations' => AffectationResource::collection(
+            //     $this->whenLoaded('affectations')
+            // ),
 
+            // =========================
+            // DERNIER GÉRANT (SIMPLIFIÉ)
+            // =========================
+            'dernier_gerant' => $this->whenLoaded('affectations', function () {
+
+                $gerant = $this->affectations
+                    ->filter(fn ($a) => $a->user && $a->user->role === 'gerant')
+                    ->sortByDesc('created_at')
+                    ->first()?->user;
+
+                return $gerant ? [
+                    'name'      => $gerant->name,
+                    'email'     => $gerant->email,
+                    'telephone' => $gerant->telephone,
+                    'adresse'   => $gerant->adresse,
+                ] : null;
+            }),
+
+            // =========================
+            // ÉTAT
+            // =========================
             'status' => $this->status,
 
-            // 🔹 Audit
+            // =========================
+            // AUDIT
+            // =========================
             'created_by' => $this->createdBy?->name,
             'modify_by'  => $this->modifiedBy?->name,
 
+            // =========================
+            // DATES
+            // =========================
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
         ];
