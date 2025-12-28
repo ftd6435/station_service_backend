@@ -145,6 +145,84 @@ class User extends Authenticatable
         });
     }
 
+    // public function scopeVisible(Builder $query): Builder
+    // {
+    //     $auth = Auth::user();
+
+    //     if (! $auth) {
+    //         return $query->whereRaw('1 = 0');
+    //     }
+
+    //     switch ($auth->role) {
+
+    //         /**
+    //              * 🔥 SUPER ADMIN
+    //              */
+    //         case 'super_admin':
+    //             return $query;
+
+    //         /**
+    //              * 🔵 ADMIN
+    //              * → utilisateurs des stations de sa ville
+    //              * (ville déterminée via SA station)
+    //              */
+    //         case 'admin':
+
+    //             if (! $auth->station || ! $auth->station->id_ville) {
+    //                 return $query->whereRaw('1 = 0');
+    //             }
+
+    //             return $query->whereHas('station', function (Builder $q) use ($auth) {
+    //                 $q->where('id_ville', $auth->station->id_ville);
+    //             });
+
+    //         /**
+    //              * 🟣 SUPERVISEUR
+    //              * → utilisateurs de sa ville
+    //              * (ville déterminée DIRECTEMENT depuis users.id_ville)
+    //              */
+    //         case 'superviseur':
+
+    //             if (! $auth->id_ville) {
+    //                 return $query->whereRaw('1 = 0');
+    //             }
+
+    //             return $query->where(function (Builder $q) use ($auth) {
+
+    //                 // utilisateurs appartenant aux stations de la ville
+    //                 $q->whereHas('station', function (Builder $sq) use ($auth) {
+    //                     $sq->where('id_ville', $auth->id_ville);
+    //                 })
+
+    //                 // + lui-même (superviseur sans station)
+    //                     ->orWhere('id', $auth->id);
+    //             });
+
+    //         /**
+    //              * 🟡 GÉRANT
+    //              */
+    //         case 'gerant':
+
+    //             if (! $auth->id_station) {
+    //                 return $query->whereRaw('1 = 0');
+    //             }
+
+    //             return $query->where('id_station', $auth->id_station);
+
+    //         /**
+    //              * 🔴 POMPISTE
+    //              */
+    //         case 'pompiste':
+    //             return $query->where('id', $auth->id);
+
+    //         /**
+    //              * ❌ AUTRES CAS
+    //              */
+    //         default:
+    //             return $query->whereRaw('1 = 0');
+    //     }
+    // }
+
     public function scopeVisible(Builder $query): Builder
     {
         $auth = Auth::user();
@@ -157,6 +235,7 @@ class User extends Authenticatable
 
             /**
                  * 🔥 SUPER ADMIN
+                 * → tous les utilisateurs
                  */
             case 'super_admin':
                 return $query;
@@ -178,28 +257,23 @@ class User extends Authenticatable
 
             /**
                  * 🟣 SUPERVISEUR
-                 * → utilisateurs de sa ville
-                 * (ville déterminée DIRECTEMENT depuis users.id_ville)
+                 * → utilisateurs de SA station
+                 * + lui-même
                  */
             case 'superviseur':
 
-                if (! $auth->id_ville) {
+                if (! $auth->id_station) {
                     return $query->whereRaw('1 = 0');
                 }
 
                 return $query->where(function (Builder $q) use ($auth) {
-
-                    // utilisateurs appartenant aux stations de la ville
-                    $q->whereHas('station', function (Builder $sq) use ($auth) {
-                        $sq->where('id_ville', $auth->id_ville);
-                    })
-
-                    // + lui-même (superviseur sans station)
+                    $q->where('id_station', $auth->id_station)
                         ->orWhere('id', $auth->id);
                 });
 
             /**
                  * 🟡 GÉRANT
+                 * → utilisateurs de sa station
                  */
             case 'gerant':
 
@@ -211,6 +285,7 @@ class User extends Authenticatable
 
             /**
                  * 🔴 POMPISTE
+                 * → uniquement lui-même
                  */
             case 'pompiste':
                 return $query->where('id', $auth->id);

@@ -49,43 +49,19 @@ class Station extends Model
 
                 /**
                      * 🔥 SUPER ADMIN
+                     * → toutes les stations
                      */
                 case 'super_admin':
                     break;
 
                 /**
                      * 🔵 ADMIN
-                     * → stations de la ville de SA station
+                     * 🟣 SUPERVISEUR
+                     * 🟡 GÉRANT
+                     * → UNIQUEMENT leur station
                      */
                 case 'admin':
-
-                    if (! $user->station || ! $user->station->id_ville) {
-                        $query->whereRaw('1 = 0');
-                        return;
-                    }
-
-                    $query->where('id_ville', $user->station->id_ville);
-                    break;
-
-                /**
-                     * 🟣 SUPERVISEUR
-                     * → stations de SA ville
-                     * (ville directe via users.id_ville)
-                     */
                 case 'superviseur':
-
-                    if (! $user->id_ville) {
-                        $query->whereRaw('1 = 0');
-                        return;
-                    }
-
-                    $query->where('id_ville', $user->id_ville);
-                    break;
-
-                /**
-                     * 🟡 GÉRANT
-                     * → uniquement sa station
-                     */
                 case 'gerant':
 
                     if (! $user->id_station) {

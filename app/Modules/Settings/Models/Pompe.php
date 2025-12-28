@@ -34,6 +34,79 @@ class Pompe extends Model
         | GLOBAL SCOPE : VISIBILITÉ DES POMPES
         |--------------------------------------------------------------------------
         */
+        // static::addGlobalScope('role_scope', function (Builder $query) {
+
+        //     $user = Auth::user();
+
+        //     if (! $user) {
+        //         $query->whereRaw('1 = 0');
+        //         return;
+        //     }
+
+        //     switch ($user->role) {
+
+        //         /**
+        //              * 🔥 SUPER ADMIN
+        //              */
+        //         case 'super_admin':
+        //             break;
+
+        //         /**
+        //              * 🔵 ADMIN
+        //              * → pompes des stations de la ville de SA station
+        //              */
+        //         case 'admin':
+
+        //             if (! $user->station || ! $user->station->id_ville) {
+        //                 $query->whereRaw('1 = 0');
+        //                 return;
+        //             }
+
+        //             $query->whereHas('station', function (Builder $q) use ($user) {
+        //                 $q->where('id_ville', $user->station->id_ville);
+        //             });
+        //             break;
+
+        //         /**
+        //              * 🟣 SUPERVISEUR
+        //              * → pompes des stations de SA ville
+        //              * (ville directe via users.id_ville)
+        //              */
+        //         case 'superviseur':
+
+        //             if (! $user->id_ville) {
+        //                 $query->whereRaw('1 = 0');
+        //                 return;
+        //             }
+
+        //             $query->whereHas('station', function (Builder $q) use ($user) {
+        //                 $q->where('id_ville', $user->id_ville);
+        //             });
+        //             break;
+
+        //         /**
+        //              * 🟡 GÉRANT
+        //              * → pompes de sa station
+        //              */
+        //         case 'gerant':
+
+        //             if (! $user->id_station) {
+        //                 $query->whereRaw('1 = 0');
+        //                 return;
+        //             }
+
+        //             $query->where('id_station', $user->id_station);
+        //             break;
+
+        //         /**
+        //              * 🔴 POMPISTE
+        //              * → aucune pompe (via affectations seulement)
+        //              */
+        //         default:
+        //             $query->whereRaw('1 = 0');
+        //     }
+        // });
+
         static::addGlobalScope('role_scope', function (Builder $query) {
 
             $user = Auth::user();
@@ -47,47 +120,19 @@ class Pompe extends Model
 
                 /**
                      * 🔥 SUPER ADMIN
+                     * → toutes les pompes
                      */
                 case 'super_admin':
                     break;
 
                 /**
                      * 🔵 ADMIN
-                     * → pompes des stations de la ville de SA station
+                     * 🟣 SUPERVISEUR
+                     * 🟡 GÉRANT
+                     * → pompes de LEUR station
                      */
                 case 'admin':
-
-                    if (! $user->station || ! $user->station->id_ville) {
-                        $query->whereRaw('1 = 0');
-                        return;
-                    }
-
-                    $query->whereHas('station', function (Builder $q) use ($user) {
-                        $q->where('id_ville', $user->station->id_ville);
-                    });
-                    break;
-
-                /**
-                     * 🟣 SUPERVISEUR
-                     * → pompes des stations de SA ville
-                     * (ville directe via users.id_ville)
-                     */
                 case 'superviseur':
-
-                    if (! $user->id_ville) {
-                        $query->whereRaw('1 = 0');
-                        return;
-                    }
-
-                    $query->whereHas('station', function (Builder $q) use ($user) {
-                        $q->where('id_ville', $user->id_ville);
-                    });
-                    break;
-
-                /**
-                     * 🟡 GÉRANT
-                     * → pompes de sa station
-                     */
                 case 'gerant':
 
                     if (! $user->id_station) {
@@ -100,7 +145,7 @@ class Pompe extends Model
 
                 /**
                      * 🔴 POMPISTE
-                     * → aucune pompe (via affectations seulement)
+                     * → aucune pompe (accès via affectations uniquement)
                      */
                 default:
                     $query->whereRaw('1 = 0');
