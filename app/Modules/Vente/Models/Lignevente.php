@@ -2,8 +2,10 @@
 
 namespace App\Modules\Vente\Models;
 
+use App\Modules\Administration\Models\User;
 use App\Modules\Settings\Models\Affectation;
 use App\Modules\Settings\Models\Station;
+ // ✅ import manquant
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -14,7 +16,7 @@ class LigneVente extends Model
 
     protected $fillable = [
         'id_station',
-        'id_produit',
+        'id_cuve',          // ✅ clé métier
         'id_affectation',
         'index_debut',
         'index_fin',
@@ -46,7 +48,8 @@ class LigneVente extends Model
 
     /**
      * =========================
-     * SCOPE : VISIBILITÉ PAR RÔLE / ENTITÉ
+     * SCOPE : VISIBILITÉ PAR RÔLE
+     * (100 % basé sur AFFECTATION)
      * =========================
      */
     public function scopeVisible(Builder $query): Builder
@@ -68,28 +71,41 @@ class LigneVente extends Model
 
             /**
              * 🔵 ADMIN / 🟣 SUPERVISEUR / 🟡 GÉRANT
-             * → ventes de leur station
+             * → ventes de la station issue
+             *   de la DERNIÈRE affectation active
              */
             case 'admin':
             case 'superviseur':
             case 'gerant':
 
-                if (! $user->station) {
+                $stationId = $user->affectations()
+                    ->where('status', true)
+                    ->latest('created_at')
+                    ->value('id_station');
+
+                if (! $stationId) {
                     return $query->whereRaw('1 = 0');
                 }
 
-                return $query->where('id_station', $user->station->id);
+                return $query->where('id_station', $stationId);
 
             /**
              * 🔴 POMPISTE
-             * → uniquement ses ventes (via affectation active)
+             * → uniquement ses ventes
+             *   via son AFFECTATION ACTIVE
              */
             case 'pompiste':
 
-                return $query->whereHas('affectation', function (Builder $q) use ($user) {
-                    $q->where('id_user', $user->id)
-                      ->where('status', true);
-                });
+                $affectationId = $user->affectations()
+                    ->where('status', true)
+                    ->latest('created_at')
+                    ->value('id');
+
+                if (! $affectationId) {
+                    return $query->whereRaw('1 = 0');
+                }
+
+                return $query->where('id_affectation', $affectationId);
 
             /**
              * ❌ AUTRES CAS
@@ -111,11 +127,16 @@ class LigneVente extends Model
         );
     }
 
-    public function produit()
+    /**
+     * 🔹 CUVE
+     * Table = produits
+     * Clé métier = id_cuve
+     */
+    public function cuve()
     {
         return $this->belongsTo(
             Produit::class,
-            'id_produit'
+            'id_cuve'
         );
     }
 
@@ -125,5 +146,20 @@ class LigneVente extends Model
             Affectation::class,
             'id_affectation'
         );
+    }
+
+    /**
+     * =========================
+     * AUDIT
+     * =========================
+     */
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function modifiedBy()
+    {
+        return $this->belongsTo(User::class, 'modify_by');
     }
 }

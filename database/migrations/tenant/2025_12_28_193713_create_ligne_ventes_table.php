@@ -11,13 +11,21 @@ return new class extends Migration
         Schema::create('ligne_ventes', function (Blueprint $table) {
             $table->id();
 
-            // Relations (TOUTES NULLABLES)
+            // =================================================
+            // RELATIONS (TOUTES NULLABLES)
+            // =================================================
+
             $table->foreignId('id_station')
                 ->nullable()
                 ->constrained('stations')
                 ->nullOnDelete();
 
-            $table->foreignId('id_produit')
+            /**
+             * 🔹 CUVE
+             * La table reste "produits"
+             * mais la FK métier est id_cuve
+             */
+            $table->foreignId('id_cuve')
                 ->nullable()
                 ->constrained('produits')
                 ->nullOnDelete();
@@ -27,15 +35,24 @@ return new class extends Migration
                 ->constrained('affectations')
                 ->nullOnDelete();
 
-            // Données vente (TOUTES NULLABLES)
+            // =================================================
+            // DONNÉES DE VENTE
+            // =================================================
+
             $table->decimal('index_debut', 15, 2)->nullable();
             $table->decimal('index_fin', 15, 2)->nullable();
             $table->decimal('qte_vendu', 15, 2)->nullable();
 
-            // État
+            // =================================================
+            // ÉTAT
+            // =================================================
+
             $table->boolean('status')->default(false);
 
-            // Audit
+            // =================================================
+            // AUDIT
+            // =================================================
+
             $table->foreignId('created_by')
                 ->nullable()
                 ->constrained('users')

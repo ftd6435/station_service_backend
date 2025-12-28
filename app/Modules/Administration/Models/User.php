@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Modules\Administration\Models;
 
 use App\Modules\Settings\Models\Affectation;
@@ -68,7 +69,7 @@ class User extends Authenticatable
     /**
      * =================================================
      * SCOPE LOCAL : VISIBILITÉ DES UTILISATEURS
-     * (basé sur la DERNIÈRE affectation)
+     * (100 % basé sur la DERNIÈRE affectation active)
      * =================================================
      */
     public function scopeVisible(Builder $query): Builder
@@ -82,42 +83,75 @@ class User extends Authenticatable
         switch ($auth->role) {
 
             /**
-                 * 🔥 SUPER ADMIN
-                 */
+             * 🔥 SUPER ADMIN
+             * → voit tout
+             */
             case 'super_admin':
                 return $query;
 
             /**
-                 * 🔵 ADMIN
-                 * 🟣 SUPERVISEUR
-                 * 🟡 GÉRANT
-                 * → utilisateurs de la même station
-                 * (via dernière affectation)
-                 */
+             * 🔵 ADMIN
+             * 🟣 SUPERVISEUR
+             * 🟡 GÉRANT
+             * → utilisateurs de la même STATION
+             *   via affectation active
+             */
             case 'admin':
             case 'superviseur':
             case 'gerant':
 
-                $stationId = $auth->station?->id;
+                $stationId = $auth->affectations()
+                    ->where('status', true)
+                    ->latest('created_at')
+                    ->value('id_station');
 
                 if (! $stationId) {
                     return $query->whereRaw('1 = 0');
                 }
 
-                return $query->whereHas('station', function (Builder $q) use ($stationId) {
-                    $q->where('stations.id', $stationId);
+                return $query->whereHas('affectations', function (Builder $q) use ($stationId) {
+                    $q->where('id_station', $stationId)
+                      ->where('status', true);
                 });
 
             /**
-                 * 🔴 POMPISTE
-                 * → lui-même uniquement
-                 */
+             * 🔴 POMPISTE
+             * → utilisateurs de la même POMPE
+             *   sinon fallback STATION
+             *   via affectation active
+             */
             case 'pompiste':
-                return $query->where('id', $auth->id);
+
+                $affectation = $auth->affectations()
+                    ->where('status', true)
+                    ->latest('created_at')
+                    ->first();
+
+                if (! $affectation) {
+                    return $query->whereRaw('1 = 0');
+                }
+
+                // 🔹 Priorité : même pompe
+                if (! empty($affectation->id_pompe)) {
+                    return $query->whereHas('affectations', function (Builder $q) use ($affectation) {
+                        $q->where('id_pompe', $affectation->id_pompe)
+                          ->where('status', true);
+                    });
+                }
+
+                // 🔹 Fallback : même station
+                if (! empty($affectation->id_station)) {
+                    return $query->whereHas('affectations', function (Builder $q) use ($affectation) {
+                        $q->where('id_station', $affectation->id_station)
+                          ->where('status', true);
+                    });
+                }
+
+                return $query->whereRaw('1 = 0');
 
             /**
-                 * ❌ AUTRES CAS
-                 */
+             * ❌ AUTRES CAS
+             */
             default:
                 return $query->whereRaw('1 = 0');
         }
@@ -130,23 +164,34 @@ class User extends Authenticatable
      */
 
     /**
-     * Station courante de l'utilisateur
-     * → dernière affectation vers une station
+     * Historique des affectations de l'utilisateur
+     */
+    public function affectations()
+    {
+        return $this->hasMany(Affectation::class, 'id_user')
+            ->orderBy('created_at', 'desc');
+    }
+
+    /**
+     * Station courante
+     * → dérivée STRICTEMENT de l’affectation active
      */
     public function station()
     {
         return $this->hasOneThrough(
             Station::class,
             Affectation::class,
-            'id_user',   // FK sur affectations
-            'id',        // PK sur stations
-            'id',        // PK sur users
-            'id_station' // FK vers stations
-        )->latest('affectations.created_at');
+            'id_user',
+            'id',
+            'id',
+            'id_station'
+        )
+        ->where('affectations.status', true)
+        ->latest('affectations.created_at');
     }
 
     /**
-     * Ville (si besoin direct)
+     * Ville
      */
     public function ville(): BelongsTo
     {
@@ -165,14 +210,4 @@ class User extends Authenticatable
     {
         return $this->belongsTo(self::class, 'modify_by');
     }
-
-    /**
-     * Historique des affectations de l'utilisateur
-     */
-    public function affectations()
-    {
-        return $this->hasMany(Affectation::class, 'id_user')
-            ->orderBy('created_at', 'desc');
-    }
-
 }

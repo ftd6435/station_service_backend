@@ -10,14 +10,16 @@ class ProduitService
 {
     /**
      * =========================
-     * LISTE DES PRODUITS
+     * LISTE DES CUVES
      * =========================
      */
     public function getAll()
     {
         try {
 
-            $produits = Produit::orderBy('libelle')->get();
+            $produits = Produit::visible()
+                ->orderBy('libelle')
+                ->get();
 
             return response()->json([
                 'status' => 200,
@@ -28,40 +30,41 @@ class ProduitService
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Erreur lors de la récupération des produits.',
+                'message' => 'Erreur lors de la récupération des cuves.',
                 'error'   => $e->getMessage(),
-            ]);
+            ], 500);
         }
     }
 
     /**
      * =========================
-     * DÉTAIL D’UN PRODUIT
+     * DÉTAIL D’UNE CUVE
      * =========================
      */
     public function getOne(int $id)
     {
         try {
 
-            $produit = Produit::findOrFail($id);
+            $produit = Produit::visible()->findOrFail($id);
 
             return response()->json([
                 'status' => 200,
                 'data'   => new ProduitResource($produit),
             ]);
 
-        } catch (Exception) {
+        } catch (Exception $e) {
 
             return response()->json([
                 'status'  => 404,
-                'message' => 'Produit introuvable.',
-            ]);
+                'message' => 'Cuve introuvable.',
+                'error'   => $e->getMessage(),
+            ], 404);
         }
     }
 
     /**
      * =========================
-     * CRÉATION
+     * CRÉATION (CUVE)
      * =========================
      */
     public function store(array $data)
@@ -72,7 +75,7 @@ class ProduitService
 
             return response()->json([
                 'status'  => 200,
-                'message' => 'Produit créé avec succès.',
+                'message' => 'Cuve créée avec succès.',
                 'data'    => new ProduitResource($produit),
             ]);
 
@@ -80,27 +83,27 @@ class ProduitService
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Erreur lors de la création du produit.',
+                'message' => 'Erreur lors de la création de la cuve.',
                 'error'   => $e->getMessage(),
-            ]);
+            ], 500);
         }
     }
 
     /**
      * =========================
-     * MODIFICATION
+     * MODIFICATION (CUVE)
      * =========================
      */
     public function update(int $id, array $data)
     {
         try {
 
-            $produit = Produit::findOrFail($id);
+            $produit = Produit::visible()->findOrFail($id);
             $produit->update($data);
 
             return response()->json([
                 'status'  => 200,
-                'message' => 'Produit modifié avec succès.',
+                'message' => 'Cuve modifiée avec succès.',
                 'data'    => new ProduitResource($produit),
             ]);
 
@@ -108,35 +111,36 @@ class ProduitService
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Erreur lors de la modification du produit.',
+                'message' => 'Erreur lors de la modification de la cuve.',
                 'error'   => $e->getMessage(),
-            ]);
+            ], 500);
         }
     }
 
     /**
      * =========================
-     * SUPPRESSION
+     * SUPPRESSION (CUVE)
      * =========================
      */
     public function delete(int $id)
     {
         try {
 
-            Produit::findOrFail($id)->delete();
+            $produit = Produit::visible()->findOrFail($id);
+            $produit->delete();
 
             return response()->json([
                 'status'  => 200,
-                'message' => 'Produit supprimé avec succès.',
+                'message' => 'Cuve supprimée avec succès.',
             ]);
 
         } catch (Exception $e) {
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Erreur lors de la suppression du produit.',
+                'message' => 'Erreur lors de la suppression de la cuve.',
                 'error'   => $e->getMessage(),
-            ]);
+            ], 500);
         }
     }
 }

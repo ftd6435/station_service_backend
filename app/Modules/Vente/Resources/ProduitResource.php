@@ -10,21 +10,37 @@ class ProduitResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
+            // =========================
+            // IDENTITÉ CUVE
+            // =========================
+            'id'        => $this->id,
+            'reference' => $this->reference,
+            'libelle'   => $this->libelle,
+            'status'    => (bool) $this->status,
 
             // =========================
-            // Données métier
+            // DONNÉES DE STOCK (CUVE)
             // =========================
-            'libelle'        => $this->libelle,
-            'type_produit'   => $this->type_produit,
-            'qt_initial'     => (float) $this->qt_initial,
-            'qt_actuelle'    => (float) $this->qt_actuelle,
-            'pu_vente'       => (float) $this->pu_vente,
-            'pu_unitaire'    => (float) $this->pu_unitaire,
-            'status'         => (bool) $this->status,
+            'type'        => $this->type_cuve, // ex : gasoil, essence
+            'qt_initial'  => (float) $this->qt_initial,
+            'qt_actuelle' => (float) $this->qt_actuelle,
 
             // =========================
-            // Audit
+            // PRIX (VENTE)
+            // =========================
+            'pu_vente'    => (float) $this->pu_vente,
+            'pu_unitaire' => (float) $this->pu_unitaire,
+
+            // =========================
+            // STATION (si chargée)
+            // =========================
+            'station' => $this->whenLoaded('station', fn () => [
+                'id'      => $this->station->id,
+                'libelle' => $this->station->libelle,
+            ]),
+
+            // =========================
+            // AUDIT
             // =========================
             'created_by' => $this->createdBy?->name,
             'modify_by'  => $this->modifiedBy?->name,

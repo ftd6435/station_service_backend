@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Modules\Settings\Models;
 
 use App\Modules\Administration\Models\User;
@@ -54,6 +55,7 @@ class Station extends Model
     /**
      * =================================================
      * SCOPE LOCAL : VISIBILITÉ DES STATIONS
+     * (STRICTEMENT BASÉ SUR AFFECTATION)
      * =================================================
      */
     public function scopeVisible(Builder $query): Builder
@@ -67,31 +69,54 @@ class Station extends Model
         switch ($user->role) {
 
             /**
-                 * 🔥 SUPER ADMIN
-                 */
+             * 🔥 SUPER ADMIN
+             * → toutes les stations
+             */
             case 'super_admin':
                 return $query;
 
             /**
-                 * 🔵 ADMIN
-                 * 🟣 SUPERVISEUR
-                 * 🟡 GÉRANT
-                 * → uniquement leur station
-                 */
+             * 🔵 ADMIN
+             * 🟣 SUPERVISEUR
+             * 🟡 GÉRANT
+             * → station issue de la DERNIÈRE affectation active
+             */
             case 'admin':
             case 'superviseur':
             case 'gerant':
 
-                if (! $user->id_station) {
+                $stationId = $user->affectations()
+                    ->where('status', true)
+                    ->latest('created_at')
+                    ->value('id_station');
+
+                if (! $stationId) {
                     return $query->whereRaw('1 = 0');
                 }
 
-                return $query->where('id', $user->id_station);
+                return $query->where('id', $stationId);
 
             /**
-                 * 🔴 POMPISTE
-                 * → aucune station
-                 */
+             * 🔴 POMPISTE
+             * → station via sa DERNIÈRE affectation (pompe → station)
+             * → JAMAIS regroupé avec admin / gérant
+             */
+            case 'pompiste':
+
+                $stationId = $user->affectations()
+                    ->where('status', true)
+                    ->latest('created_at')
+                    ->value('id_station');
+
+                if (! $stationId) {
+                    return $query->whereRaw('1 = 0');
+                }
+
+                return $query->where('id', $stationId);
+
+            /**
+             * ❌ AUTRES CAS
+             */
             default:
                 return $query->whereRaw('1 = 0');
         }
@@ -128,13 +153,12 @@ class Station extends Model
         return $this->belongsTo(User::class, 'modify_by');
     }
 
-/**
- * Affectations liées à cette station
- */
+    /**
+     * Affectations liées à cette station
+     */
     public function affectations(): HasMany
     {
         return $this->hasMany(Affectation::class, 'id_station')
             ->orderBy('created_at', 'desc');
     }
-
 }
