@@ -13,9 +13,9 @@ class Affectation extends Model
     protected $table = 'affectations';
 
     protected $fillable = [
-        'id_pompe',
-        'id_pompiste',
+        'id_user',
         'id_station',
+        'id_pompe',
         'status',
         'created_by',
         'modify_by',
@@ -43,7 +43,7 @@ class Affectation extends Model
 
     /**
      * =================================================
-     * SCOPE LOCAL : VISIBILITÉ PAR RÔLE
+     * SCOPE LOCAL : VISIBILITÉ DES AFFECTATIONS
      * =================================================
      */
     public function scopeVisible(Builder $query): Builder
@@ -58,42 +58,19 @@ class Affectation extends Model
 
             /**
              * 🔥 SUPER ADMIN
+             * → toutes les affectations
              */
             case 'super_admin':
                 return $query;
 
             /**
              * 🔵 ADMIN
-             * → affectations des stations de la ville de sa station
+             * 🟣 SUPERVISEUR
+             * 🟡 GÉRANT
+             * → affectations de leur station
              */
             case 'admin':
-
-                if (! $user->station || ! $user->station->id_ville) {
-                    return $query->whereRaw('1 = 0');
-                }
-
-                return $query->whereHas('station', function (Builder $q) use ($user) {
-                    $q->where('id_ville', $user->station->id_ville);
-                });
-
-            /**
-             * 🟣 SUPERVISEUR
-             * → affectations des stations de sa ville
-             */
             case 'superviseur':
-
-                if (! $user->id_ville) {
-                    return $query->whereRaw('1 = 0');
-                }
-
-                return $query->whereHas('station', function (Builder $q) use ($user) {
-                    $q->where('id_ville', $user->id_ville);
-                });
-
-            /**
-             * 🟡 GÉRANT
-             * → affectations de sa station
-             */
             case 'gerant':
 
                 if (! $user->id_station) {
@@ -107,7 +84,7 @@ class Affectation extends Model
              * → uniquement ses affectations
              */
             case 'pompiste':
-                return $query->where('id_pompiste', $user->id);
+                return $query->where('id_user', $user->id);
 
             /**
              * ❌ AUTRES CAS
@@ -123,19 +100,19 @@ class Affectation extends Model
      * =================================================
      */
 
-    public function pompe(): BelongsTo
+    public function user(): BelongsTo
     {
-        return $this->belongsTo(Pompe::class, 'id_pompe');
-    }
-
-    public function pompiste(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'id_pompiste');
+        return $this->belongsTo(User::class, 'id_user');
     }
 
     public function station(): BelongsTo
     {
         return $this->belongsTo(Station::class, 'id_station');
+    }
+
+    public function pompe(): BelongsTo
+    {
+        return $this->belongsTo(Pompe::class, 'id_pompe');
     }
 
     public function createdBy(): BelongsTo

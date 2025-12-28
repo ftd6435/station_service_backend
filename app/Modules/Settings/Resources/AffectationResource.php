@@ -14,12 +14,25 @@ class AffectationResource extends JsonResource
             'id'     => $this->id,
             'status' => $this->status,
 
-            'pompe' => new PompeResource($this->pompe),
+            // 🔹 Pompe (optionnelle)
+            'pompe' => $this->whenLoaded(
+                'pompe',
+                fn () => new PompeResource($this->pompe)
+            ),
 
-            'pompiste' => new UserResource($this->pompiste),
+            // 🔹 Agent affecté (user générique)
+            'agent' => $this->whenLoaded(
+                'user',
+                fn () => new UserResource($this->user)
+            ),
 
-            'station' =>new StationResource($this->station),
+            // 🔹 Station (optionnelle)
+            'station' => $this->whenLoaded(
+                'station',
+                fn () => new StationResource($this->station)
+            ),
 
+            // 🔹 Audit
             'created_by' => $this->createdBy?->name,
             'modify_by'  => $this->modifiedBy?->name,
 
