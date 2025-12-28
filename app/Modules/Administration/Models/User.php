@@ -1,7 +1,7 @@
 <?php
-
 namespace App\Modules\Administration\Models;
 
+use App\Modules\Settings\Models\Affectation;
 use App\Modules\Settings\Models\Station;
 use App\Modules\Settings\Models\Ville;
 use Illuminate\Database\Eloquent\Builder;
@@ -25,7 +25,6 @@ class User extends Authenticatable
         'adresse',
         'image',
         'role',
-        'id_station',
         'id_ville',
         'status',
         'password',
@@ -42,7 +41,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'status' => 'boolean',
+            'status'            => 'boolean',
         ];
     }
 
@@ -69,71 +68,94 @@ class User extends Authenticatable
     /**
      * =================================================
      * SCOPE LOCAL : VISIBILITÉ DES UTILISATEURS
+     * (basé sur la DERNIÈRE affectation)
      * =================================================
      */
     public function scopeVisible(Builder $query): Builder
     {
-        $user = Auth::user();
+        $auth = Auth::user();
 
-        if (! $user) {
+        if (! $auth) {
             return $query->whereRaw('1 = 0');
         }
 
-        switch ($user->role) {
+        switch ($auth->role) {
 
             /**
-             * 🔥 SUPER ADMIN
-             */
+                 * 🔥 SUPER ADMIN
+                 */
             case 'super_admin':
                 return $query;
 
             /**
-             * 🔵 ADMIN
-             * 🟣 SUPERVISEUR
-             * 🟡 GÉRANT
-             * → utilisateurs de leur station
-             */
+                 * 🔵 ADMIN
+                 * 🟣 SUPERVISEUR
+                 * 🟡 GÉRANT
+                 * → utilisateurs de la même station
+                 * (via dernière affectation)
+                 */
             case 'admin':
             case 'superviseur':
             case 'gerant':
 
-                if (! $user->id_station) {
+                $stationId = $auth->station?->id;
+
+                if (! $stationId) {
                     return $query->whereRaw('1 = 0');
                 }
 
-                return $query->where('id_station', $user->id_station);
+                return $query->whereHas('station', function (Builder $q) use ($stationId) {
+                    $q->where('stations.id', $stationId);
+                });
 
             /**
-             * 🔴 POMPISTE
-             * → lui-même uniquement
-             */
+                 * 🔴 POMPISTE
+                 * → lui-même uniquement
+                 */
             case 'pompiste':
-                return $query->where('id', $user->id);
+                return $query->where('id', $auth->id);
 
             /**
-             * ❌ AUTRES CAS
-             */
+                 * ❌ AUTRES CAS
+                 */
             default:
                 return $query->whereRaw('1 = 0');
         }
     }
 
     /**
-     * ============================
+     * =================================================
      * RELATIONS
-     * ============================
+     * =================================================
      */
 
-    public function station(): BelongsTo
+    /**
+     * Station courante de l'utilisateur
+     * → dernière affectation vers une station
+     */
+    public function station()
     {
-        return $this->belongsTo(Station::class, 'id_station');
+        return $this->hasOneThrough(
+            Station::class,
+            Affectation::class,
+            'id_user',   // FK sur affectations
+            'id',        // PK sur stations
+            'id',        // PK sur users
+            'id_station' // FK vers stations
+        )->latest('affectations.created_at');
     }
 
+    /**
+     * Ville (si besoin direct)
+     */
     public function ville(): BelongsTo
     {
         return $this->belongsTo(Ville::class, 'id_ville');
     }
 
+    /**
+     * Audit
+     */
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(self::class, 'created_by');
@@ -143,4 +165,14 @@ class User extends Authenticatable
     {
         return $this->belongsTo(self::class, 'modify_by');
     }
+
+    /**
+     * Historique des affectations de l'utilisateur
+     */
+    public function affectations()
+    {
+        return $this->hasMany(Affectation::class, 'id_user')
+            ->orderBy('created_at', 'desc');
+    }
+
 }

@@ -21,9 +21,13 @@ class UserService
     {
         try {
 
-            // 🔹 Requête simple
             $users = User::visible()
-                ->with(['station', 'createdBy', 'modifiedBy'])
+                ->with([
+                    'station',      // dernière affectation → station courante
+                    'affectations', // historique complet
+                    'createdBy',
+                    'modifiedBy',
+                ])
                 ->orderBy('name')
                 ->get();
 
@@ -32,7 +36,7 @@ class UserService
                 'data'   => UserResource::collection($users),
             ]);
 
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
 
             return response()->json([
                 'status'  => 500,
@@ -168,26 +172,33 @@ class UserService
      * Détail utilisateur
      * ============================
      */
-    public function getOne(int $id)
-    {
-        try {
+  public function getOne(int $id)
+{
+    try {
 
-            $user = User::with(['station', 'createdBy', 'modifiedBy'])
-                ->findOrFail($id);
+        $user = User::visible()
+            ->with([
+                'station',        // station courante (dernière affectation)
+                'affectations',   // historique
+                'createdBy',
+                'modifiedBy',
+            ])
+            ->findOrFail($id);
 
-            return response()->json([
-                'status' => 200,
-                'data'   => new UserResource($user),
-            ]);
+        return response()->json([
+            'status' => 200,
+            'data'   => new UserResource($user),
+        ]);
 
-        } catch (Exception $e) {
+    } catch (\Throwable $e) {
 
-            return response()->json([
-                'status'  => 404,
-                'message' => 'Utilisateur introuvable.',
-            ]);
-        }
+        return response()->json([
+            'status'  => 404,
+            'message' => 'Utilisateur introuvable.',
+        ]);
     }
+}
+
 
     /**
      * ============================
