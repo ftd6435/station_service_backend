@@ -12,13 +12,13 @@ class PompeService
     {
         try {
 
-            // 🔹 Requête SIMPLE
-            // Le filtrage par rôle est AUTOMATIQUE via le Global Scope du modèle Pompe
-            $pompes = Pompe::with([
-                'station.ville',
-                'createdBy',
-                'modifiedBy',
-            ])
+            // 🔹 Requête avec filtrage métier explicite
+            $pompes = Pompe::visible()
+                ->with([
+                    'station.ville',
+                    'createdBy',
+                    'modifiedBy',
+                ])
                 ->orderBy('reference')
                 ->get();
 
@@ -27,7 +27,7 @@ class PompeService
                 'data'   => PompeResource::collection($pompes),
             ]);
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
 
             return response()->json([
                 'status'  => 500,
