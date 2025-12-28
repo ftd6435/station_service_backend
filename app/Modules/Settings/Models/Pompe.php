@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Modules\Settings\Models;
 
 use App\Modules\Administration\Models\User;
@@ -24,93 +25,15 @@ class Pompe extends Model
 
     /**
      * =================================================
-     * BOOT : filtrage global + audit + référence
+     * BOOT : AUDIT + RÉFÉRENCE
      * =================================================
      */
     protected static function booted(): void
     {
         /*
-        |--------------------------------------------------------------------------
-        | GLOBAL SCOPE : VISIBILITÉ DES POMPES
-        |--------------------------------------------------------------------------
-        */
-        static::addGlobalScope('role_scope', function (Builder $query) {
-
-            $user = Auth::user();
-
-            if (! $user) {
-                $query->whereRaw('1 = 0');
-                return;
-            }
-
-            switch ($user->role) {
-
-                /**
-                     * 🔥 SUPER ADMIN
-                     */
-                case 'super_admin':
-                    break;
-
-                /**
-                     * 🔵 ADMIN
-                     * → pompes des stations de la ville de SA station
-                     */
-                case 'admin':
-
-                    if (! $user->station || ! $user->station->id_ville) {
-                        $query->whereRaw('1 = 0');
-                        return;
-                    }
-
-                    $query->whereHas('station', function (Builder $q) use ($user) {
-                        $q->where('id_ville', $user->station->id_ville);
-                    });
-                    break;
-
-                /**
-                     * 🟣 SUPERVISEUR
-                     * → pompes des stations de SA ville
-                     * (ville directe via users.id_ville)
-                     */
-                case 'superviseur':
-
-                    if (! $user->id_ville) {
-                        $query->whereRaw('1 = 0');
-                        return;
-                    }
-
-                    $query->whereHas('station', function (Builder $q) use ($user) {
-                        $q->where('id_ville', $user->id_ville);
-                    });
-                    break;
-
-                /**
-                     * 🟡 GÉRANT
-                     * → pompes de sa station
-                     */
-                case 'gerant':
-
-                    if (! $user->id_station) {
-                        $query->whereRaw('1 = 0');
-                        return;
-                    }
-
-                    $query->where('id_station', $user->id_station);
-                    break;
-
-                /**
-                     * 🔴 POMPISTE
-                     * → aucune pompe (via affectations seulement)
-                     */
-                default:
-                    $query->whereRaw('1 = 0');
-            }
-        });
-
-        /*
-        |--------------------------------------------------------------------------
+        |--------------------------------------------------
         | CRÉATION : audit + référence automatique
-        |--------------------------------------------------------------------------
+        |--------------------------------------------------
         */
         static::creating(function ($m) {
 
@@ -118,23 +41,85 @@ class Pompe extends Model
                 $m->created_by = Auth::id();
             }
 
-            // 🔹 Génération automatique de la référence pompe
+            // Génération automatique de la référence
             if (empty($m->reference)) {
-                $nextId       = self::withoutGlobalScopes()->max('id') + 1;
+                $nextId = self::withoutGlobalScopes()->max('id') + 1;
                 $m->reference = 'PMP-' . str_pad($nextId, 3, '0', STR_PAD_LEFT);
             }
         });
 
         /*
-        |--------------------------------------------------------------------------
+        |--------------------------------------------------
         | MISE À JOUR : audit
-        |--------------------------------------------------------------------------
+        |--------------------------------------------------
         */
         static::updating(function ($m) {
             if (Auth::check()) {
                 $m->modify_by = Auth::id();
             }
         });
+    }
+
+    /**
+     * =================================================
+     * SCOPE LOCAL : VISIBILITÉ DES POMPES
+     * =================================================
+     */
+    public function scopeVisible(Builder $query): Builder
+    {
+        $user = Auth::user();
+
+        if (! $user) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        switch ($user->role) {
+
+            /**
+             * 🔥 SUPER ADMIN
+             */
+            case 'super_admin':
+                return $query;
+
+            /**
+             * 🔵 ADMIN
+             * 🟣 SUPERVISEUR
+             * 🟡 GÉRANT
+             * → pompes de la station issue
+             *   de la DERNIÈRE affectation active
+             */
+            case 'admin':
+            case 'superviseur':
+            case 'gerant':
+
+                $stationId = $user->affectations()
+                    ->where('status', true)
+                    ->latest('created_at')
+                    ->value('id_station');
+
+                if (! $stationId) {
+                    return $query->whereRaw('1 = 0');
+                }
+
+                return $query->where('id_station', $stationId);
+
+            /**
+             * 🔴 POMPISTE
+             * → pompes via son affectation active
+             */
+            case 'pompiste':
+
+                return $query->whereHas('affectations', function (Builder $q) use ($user) {
+                    $q->where('id_user', $user->id)
+                      ->where('status', true);
+                });
+
+            /**
+             * ❌ AUTRES CAS
+             */
+            default:
+                return $query->whereRaw('1 = 0');
+        }
     }
 
     /**
