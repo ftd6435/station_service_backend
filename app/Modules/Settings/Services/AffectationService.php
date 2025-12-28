@@ -1,11 +1,10 @@
 <?php
-
 namespace App\Modules\Settings\Services;
 
 use App\Modules\Settings\Models\Affectation;
 use App\Modules\Settings\Resources\AffectationResource;
-use Illuminate\Support\Facades\DB;
 use Exception;
+use Illuminate\Support\Facades\DB;
 
 class AffectationService
 {
@@ -14,100 +13,99 @@ class AffectationService
      * LISTE DES AFFECTATIONS (VISIBILITÉ PAR RÔLE)
      * =================================================
      */
-    public function getAll()
-    {
-        try {
+   public function getAll()
+{
+    try {
 
-            $affectations = Affectation::visible()
-                ->with([
-                    'user.affectations',
-                    'station',
-                    'pompe',
-                    'createdBy',
-                    'modifiedBy',
-                ])
-                ->orderBy('created_at', 'desc')
-                ->get();
+        $affectations = Affectation::visible()
+            ->with([
+                'user',        // ✅ UserResource
+                'station',     // ✅ StationResource
+                'pompe',       // ✅ PompeResource
+                'createdBy',
+                'modifiedBy',
+            ])
+            ->orderBy('created_at', 'desc')
+            ->get();
 
-            return response()->json([
-                'status' => 200,
-                'data'   => AffectationResource::collection($affectations),
-            ]);
+        return response()->json([
+            'status' => 200,
+            'data'   => AffectationResource::collection($affectations),
+        ]);
 
-        } catch (Exception $e) {
+    } catch (\Throwable $e) {
 
-            return response()->json([
-                'status'  => 500,
-                'message' => 'Erreur lors de la récupération des affectations.',
-                'error'   => $e->getMessage(),
-            ]);
-        }
+        return response()->json([
+            'status'  => 500,
+            'message' => 'Erreur lors de la récupération des affectations.',
+            'error'   => $e->getMessage(),
+        ]);
     }
+}
+
 
     /**
      * =================================================
      * CRÉATION D’UNE AFFECTATION
      * =================================================
      */
-   
 
-public function store(array $data)
-{
-    try {
+    public function store(array $data)
+    {
+        try {
 
-        DB::beginTransaction();
+            DB::beginTransaction();
 
-        // 🔒 RÈGLE MÉTIER :
-        // un utilisateur ne peut avoir qu'une seule affectation active
-        if (! empty($data['id_user'])) {
+            // 🔒 RÈGLE MÉTIER :
+            // un utilisateur ne peut avoir qu'une seule affectation active
+            if (! empty($data['id_user'])) {
 
-            $hasActive = Affectation::where('id_user', $data['id_user'])
-                ->where('status', true)
-                ->exists();
+                $hasActive = Affectation::where('id_user', $data['id_user'])
+                    ->where('status', true)
+                    ->exists();
 
-            if ($hasActive) {
+                if ($hasActive) {
 
-                DB::rollBack();
+                    DB::rollBack();
 
-                return response()->json([
-                    'status'  => 409,
-                    'message' => 'Cet utilisateur possède déjà une affectation active. Veuillez d’abord la désactiver.',
-                ]);
+                    return response()->json([
+                        'status'  => 409,
+                        'message' => 'Cet utilisateur possède déjà une affectation active. Veuillez d’abord la désactiver.',
+                    ]);
+                }
             }
+
+            // ✅ Création toujours ACTIVE (gérée côté backend)
+            $data['status'] = true;
+
+            $affectation = Affectation::create($data);
+
+            $affectation->load([
+                'user',
+                'station',
+                'pompe',
+                'createdBy',
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Affectation créée avec succès.',
+                'data'    => new AffectationResource($affectation),
+            ]);
+
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors de la création de l’affectation.',
+                'error'   => $e->getMessage(),
+            ]);
         }
-
-        // ✅ Création toujours ACTIVE (gérée côté backend)
-        $data['status'] = true;
-
-        $affectation = Affectation::create($data);
-
-        $affectation->load([
-            'user',
-            'station',
-            'pompe',
-            'createdBy',
-        ]);
-
-        DB::commit();
-
-        return response()->json([
-            'status'  => 200,
-            'message' => 'Affectation créée avec succès.',
-            'data'    => new AffectationResource($affectation),
-        ]);
-
-    } catch (\Throwable $e) {
-
-        DB::rollBack();
-
-        return response()->json([
-            'status'  => 500,
-            'message' => 'Erreur lors de la création de l’affectation.',
-            'error'   => $e->getMessage(),
-        ]);
     }
-}
-
 
     /**
      * =================================================
