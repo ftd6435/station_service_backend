@@ -17,7 +17,7 @@ return new class extends Migration
              * =================================================
              */
             $table->foreignId('id_cuve')
-                  ->constrained('produits')
+                  ->constrained('cuves')
                   ->cascadeOnDelete();
 
             /**

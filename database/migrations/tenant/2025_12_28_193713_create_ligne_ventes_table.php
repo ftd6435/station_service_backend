@@ -27,7 +27,7 @@ return new class extends Migration
              */
             $table->foreignId('id_cuve')
                 ->nullable()
-                ->constrained('produits')
+                ->constrained('cuves')
                 ->nullOnDelete();
 
             $table->foreignId('id_affectation')

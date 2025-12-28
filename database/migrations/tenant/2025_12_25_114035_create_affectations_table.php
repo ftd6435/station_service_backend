@@ -11,32 +11,42 @@ return new class extends Migration
         Schema::create('affectations', function (Blueprint $table) {
             $table->id();
 
-            // Relations métier
-            $table->foreignId('id_pompe')
-                  ->constrained('pompes')
-                  ->cascadeOnDelete();
+            // =========================
+            // 🔹 RELATIONS MÉTIER
+            // =========================
 
-            $table->foreignId('id_pompiste')
+            // Utilisateur (pompiste / gérant / etc.)
+            $table->foreignId('id_user')
                   ->constrained('users')
                   ->cascadeOnDelete();
 
+            // Station
             $table->foreignId('id_station')
                   ->constrained('stations')
                   ->cascadeOnDelete();
 
-            // État
+            // Pompe
+            $table->foreignId('id_pompe')
+                  ->constrained('pompes')
+                  ->cascadeOnDelete();
+
+            // =========================
+            // 🔹 ÉTAT
+            // =========================
             $table->boolean('status')->default(true);
 
-            // Audit
+            // =========================
+            // 🔹 AUDIT
+            // =========================
             $table->foreignId('created_by')
                   ->nullable()
                   ->constrained('users')
-                  ->cascadeOnDelete();
+                  ->nullOnDelete();
 
             $table->foreignId('modify_by')
                   ->nullable()
                   ->constrained('users')
-                  ->cascadeOnDelete();
+                  ->nullOnDelete();
 
             $table->timestamps();
         });
