@@ -13,12 +13,26 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
 
-            // 🔹 Ville de supervision (admin / superviseur)
-            $table->foreignId('id_ville')
-                ->nullable()
-                ->after('id_station')
-                ->constrained('villes')
-                ->nullOnDelete();
+            /**
+             * 🔹 Ajout de la colonne UNIQUEMENT si absente
+             */
+            if (! Schema::hasColumn('users', 'id_ville')) {
+
+                $table->foreignId('id_ville')
+                    ->nullable()
+                    ->after('id_station')
+                    ->constrained('villes')
+                    ->nullOnDelete();
+
+            } else {
+                /**
+                 * 🔹 La colonne existe → on ajoute seulement la FK si besoin
+                 */
+                $table->foreign('id_ville')
+                    ->references('id')
+                    ->on('villes')
+                    ->nullOnDelete();
+            }
         });
     }
 
@@ -29,8 +43,11 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
 
+            // Supprimer la FK si elle existe
             $table->dropForeign(['id_ville']);
-            $table->dropColumn('id_ville');
+
+            // ⚠️ On ne supprime PAS la colonne en rollback
+            // car elle peut être utilisée ailleurs
         });
     }
 };
