@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Modules\Settings\Models;
 
 use App\Modules\Administration\Models\User;
@@ -6,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Auth;
 
 class Station extends Model
@@ -26,48 +28,74 @@ class Station extends Model
 
     /**
      * =================================================
-     * BOOT : audit + code station + filtrage par rôle
+     * BOOT : AUDIT + CODE STATION
      * =================================================
      */
     protected static function booted(): void
     {
-        /*
-        |--------------------------------------------------------------------------
-        | GLOBAL SCOPE : VISIBILITÉ PAR RÔLE
-        |--------------------------------------------------------------------------
-        */
-       
-
-        /*
-        |--------------------------------------------------------------------------
-        | CRÉATION : audit + code automatique
-        |--------------------------------------------------------------------------
-        */
         static::creating(function ($m) {
 
-            // Audit
             if (Auth::check()) {
                 $m->created_by = Auth::id();
             }
 
-            // Génération automatique du code station
             if (empty($m->code)) {
                 $lastId = self::withoutGlobalScopes()->max('id') + 1;
-
                 $m->code = 'STAT-' . str_pad($lastId, 3, '0', STR_PAD_LEFT);
             }
         });
 
-        /*
-        |--------------------------------------------------------------------------
-        | MISE À JOUR : audit
-        |--------------------------------------------------------------------------
-        */
         static::updating(function ($m) {
             if (Auth::check()) {
                 $m->modify_by = Auth::id();
             }
         });
+    }
+
+    /**
+     * =================================================
+     * SCOPE LOCAL : VISIBILITÉ DES STATIONS
+     * =================================================
+     */
+    public function scopeVisible(Builder $query): Builder
+    {
+        $user = Auth::user();
+
+        if (! $user) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        switch ($user->role) {
+
+            /**
+             * 🔥 SUPER ADMIN
+             */
+            case 'super_admin':
+                return $query;
+
+            /**
+             * 🔵 ADMIN
+             * 🟣 SUPERVISEUR
+             * 🟡 GÉRANT
+             * → uniquement leur station
+             */
+            case 'admin':
+            case 'superviseur':
+            case 'gerant':
+
+                if (! $user->id_station) {
+                    return $query->whereRaw('1 = 0');
+                }
+
+                return $query->where('id', $user->id_station);
+
+            /**
+             * 🔴 POMPISTE
+             * → aucune station
+             */
+            default:
+                return $query->whereRaw('1 = 0');
+        }
     }
 
     /**
@@ -86,6 +114,11 @@ class Station extends Model
         return $this->hasMany(Pompe::class, 'id_station');
     }
 
+    public function parametrage(): HasOne
+    {
+        return $this->hasOne(ParametrageStation::class, 'id_station');
+    }
+
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -94,9 +127,5 @@ class Station extends Model
     public function modifiedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'modify_by');
-    }
-    public function parametrage()
-    {
-        return $this->hasOne(ParametrageStation::class, 'id_station');
     }
 }

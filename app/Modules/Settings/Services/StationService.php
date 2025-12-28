@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Modules\Settings\Services;
 
 use App\Modules\Settings\Models\Station;
@@ -17,16 +16,17 @@ class StationService
     {
         try {
 
-            // 🔹 Filtrage AUTOMATIQUE via GlobalScope Station
-            $stations = Station::with([
-                'ville.pays',
-                'pompes',
-                'parametrage',
-                'createdBy',
-                'modifiedBy',
-            ])
-            ->orderBy('libelle')
-            ->get();
+            // 🔹 Filtrage EXPLICITE via scopeVisible
+            $stations = Station::visible()
+                ->with([
+                    'ville.pays',
+                    'pompes',
+                    'parametrage',
+                    'createdBy',
+                    'modifiedBy',
+                ])
+                ->orderBy('libelle')
+                ->get();
 
             return response()->json([
                 'status' => 200,
