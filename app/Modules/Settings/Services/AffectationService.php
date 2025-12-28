@@ -20,7 +20,7 @@ class AffectationService
 
             $affectations = Affectation::visible()
                 ->with([
-                    'user',
+                    'user.affectations',
                     'station',
                     'pompe',
                     'createdBy',
