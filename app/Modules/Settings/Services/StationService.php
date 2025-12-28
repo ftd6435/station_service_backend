@@ -22,6 +22,11 @@ class StationService
                     'ville.pays',
                     'pompes',
                     'parametrage',
+
+                    // ✅ AJOUT : affectations de la station
+                    'affectations.user',
+                    'affectations.pompe',
+
                     'createdBy',
                     'modifiedBy',
                 ])
@@ -52,14 +57,20 @@ class StationService
     {
         try {
 
-            // 🔹 Respect du GlobalScope (sécurité)
-            $station = Station::with([
-                'ville.pays',
-                'pompes',
-                'parametrage',
-                'createdBy',
-                'modifiedBy',
-            ])->findOrFail($id);
+            $station = Station::visible()
+                ->with([
+                    'ville.pays',
+                    'pompes',
+                    'parametrage',
+
+                    // ✅ AJOUT : affectations de la station
+                    'affectations.user',
+                    'affectations.pompe',
+
+                    'createdBy',
+                    'modifiedBy',
+                ])
+                ->findOrFail($id);
 
             return response()->json([
                 'status' => 200,
@@ -119,7 +130,7 @@ class StationService
     {
         try {
 
-            $station = Station::findOrFail($id);
+            $station = Station::visible()->findOrFail($id);
             $station->update($data);
 
             return response()->json([
@@ -154,7 +165,7 @@ class StationService
     {
         try {
 
-            Station::findOrFail($id)->delete();
+            Station::visible()->findOrFail($id)->delete();
 
             return response()->json([
                 'status'  => 200,

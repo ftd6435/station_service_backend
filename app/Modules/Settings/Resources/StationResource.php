@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use App\Modules\Settings\Resources\PompeResource;
 use App\Modules\Settings\Resources\VilleResource;
+use App\Modules\Settings\Resources\AffectationResource;
 
 class StationResource extends JsonResource
 {
@@ -18,7 +19,9 @@ class StationResource extends JsonResource
             'adresse'   => $this->adresse,
             'latitude'  => $this->latitude,
             'longitude' => $this->longitude,
-             'parametrage' => $this->whenLoaded(
+
+            // 🔹 Paramétrage
+            'parametrage' => $this->whenLoaded(
                 'parametrage',
                 fn () => new ParametrageStationResource($this->parametrage)
             ),
@@ -32,6 +35,11 @@ class StationResource extends JsonResource
             // 🔹 Pompes
             'pompes' => PompeResource::collection(
                 $this->whenLoaded('pompes')
+            ),
+
+            // 🔹 Affectations de la station (HISTORIQUE COMPLET)
+            'affectations' => AffectationResource::collection(
+                $this->whenLoaded('affectations')
             ),
 
             'status' => $this->status,

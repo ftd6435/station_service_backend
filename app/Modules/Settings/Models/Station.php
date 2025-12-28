@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Modules\Settings\Models;
 
 use App\Modules\Administration\Models\User;
@@ -40,7 +39,7 @@ class Station extends Model
             }
 
             if (empty($m->code)) {
-                $lastId = self::withoutGlobalScopes()->max('id') + 1;
+                $lastId  = self::withoutGlobalScopes()->max('id') + 1;
                 $m->code = 'STAT-' . str_pad($lastId, 3, '0', STR_PAD_LEFT);
             }
         });
@@ -68,17 +67,17 @@ class Station extends Model
         switch ($user->role) {
 
             /**
-             * 🔥 SUPER ADMIN
-             */
+                 * 🔥 SUPER ADMIN
+                 */
             case 'super_admin':
                 return $query;
 
             /**
-             * 🔵 ADMIN
-             * 🟣 SUPERVISEUR
-             * 🟡 GÉRANT
-             * → uniquement leur station
-             */
+                 * 🔵 ADMIN
+                 * 🟣 SUPERVISEUR
+                 * 🟡 GÉRANT
+                 * → uniquement leur station
+                 */
             case 'admin':
             case 'superviseur':
             case 'gerant':
@@ -90,9 +89,9 @@ class Station extends Model
                 return $query->where('id', $user->id_station);
 
             /**
-             * 🔴 POMPISTE
-             * → aucune station
-             */
+                 * 🔴 POMPISTE
+                 * → aucune station
+                 */
             default:
                 return $query->whereRaw('1 = 0');
         }
@@ -128,4 +127,14 @@ class Station extends Model
     {
         return $this->belongsTo(User::class, 'modify_by');
     }
+
+/**
+ * Affectations liées à cette station
+ */
+    public function affectations(): HasMany
+    {
+        return $this->hasMany(Affectation::class, 'id_station')
+            ->orderBy('created_at', 'desc');
+    }
+
 }
