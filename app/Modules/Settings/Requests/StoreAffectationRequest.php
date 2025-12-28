@@ -16,8 +16,8 @@ class StoreAffectationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'id_pompe'     => 'required|exists:pompes,id',
-            'id_pompiste'  => 'required|exists:users,id',
+            'id_pompe'     => 'nullable|exists:pompes,id',
+            'id_user'  => 'required|exists:users,id',
             'id_station'   => 'required|exists:stations,id',
             'status'       => 'nullable|boolean',
         ];

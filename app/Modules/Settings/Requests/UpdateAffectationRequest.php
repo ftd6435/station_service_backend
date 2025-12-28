@@ -17,7 +17,7 @@ class UpdateAffectationRequest extends FormRequest
     {
         return [
             'id_pompe'    => 'sometimes|exists:pompes,id',
-            'id_pompiste' => 'sometimes|exists:users,id',
+            'id_user' => 'sometimes|exists:users,id',
             'status'      => 'sometimes|boolean',
         ];
     }
