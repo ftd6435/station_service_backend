@@ -10,19 +10,49 @@ class ValidationVenteResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id'         => $this->id,
-            'commentaire'=> $this->commentaire,
+            'id'          => $this->id,
+            'commentaire' => $this->commentaire,
 
-            'vente' => $this->whenLoaded(
-                'vente',
-                fn () => [
+            // =================================================
+            // 🔹 VENTE
+            // =================================================
+            'vente' => $this->whenLoaded('vente', function () {
+                return [
                     'id'          => $this->vente->id,
-                    'index_debut' => $this->vente->index_debut,
-                    'index_fin'   => $this->vente->index_fin,
-                    'qte_vendu'   => $this->vente->qte_vendu,
-                ]
-            ),
+                    'index_debut' => (float) $this->vente->index_debut,
+                    'index_fin'   => (float) $this->vente->index_fin,
+                    'qte_vendu'   => (float) $this->vente->qte_vendu,
 
+                    // =============================================
+                    // 🔹 AFFECTATION / CONTEXTE
+                    // =============================================
+                    'station' => $this->vente->affectation?->pompe?->station
+                        ? [
+                            'id'      => $this->vente->affectation->pompe->station->id,
+                            'libelle' => $this->vente->affectation->pompe->station->libelle,
+                          ]
+                        : null,
+
+                    'pompe' => $this->vente->affectation?->pompe
+                        ? [
+                            'id'       => $this->vente->affectation->pompe->id,
+                            'libelle'  => $this->vente->affectation->pompe->libelle,
+                            'reference'=> $this->vente->affectation->pompe->reference,
+                          ]
+                        : null,
+
+                    'pompiste' => $this->vente->affectation?->user
+                        ? [
+                            'id'   => $this->vente->affectation->user->id,
+                            'name' => $this->vente->affectation->user->name,
+                          ]
+                        : null,
+                ];
+            }),
+
+            // =================================================
+            // 🔹 AUDIT
+            // =================================================
             'created_by' => $this->createdBy?->name,
             'modify_by'  => $this->modifiedBy?->name,
 

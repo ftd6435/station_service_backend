@@ -4,9 +4,9 @@ namespace App\Modules\Vente\Services;
 
 use App\Modules\Vente\Models\ValidationVente;
 use App\Modules\Vente\Models\LigneVente;
-use App\Modules\Vente\Models\Cuve;
 use App\Modules\Vente\Resources\ValidationVenteResource;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class ValidationVenteService
 {
@@ -20,16 +20,21 @@ class ValidationVenteService
         try {
 
             $validations = ValidationVente::visible()
-                ->with('vente')
+                ->with([
+                    'vente.affectation.pompe.station',
+                    'vente.affectation.user',
+                    'createdBy',
+                    'modifiedBy',
+                ])
                 ->orderByDesc('created_at')
                 ->get();
 
             return response()->json([
                 'status' => 200,
                 'data'   => ValidationVenteResource::collection($validations),
-            ]);
+            ], 200);
 
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
 
             return response()->json([
                 'status'  => 500,
@@ -48,7 +53,12 @@ class ValidationVenteService
         try {
 
             $validation = ValidationVente::visible()
-                ->with('vente')
+                ->with([
+                    'vente.affectation.pompe.station',
+                    'vente.affectation.user',
+                    'createdBy',
+                    'modifiedBy',
+                ])
                 ->find($id);
 
             if (! $validation) {
@@ -61,9 +71,9 @@ class ValidationVenteService
             return response()->json([
                 'status' => 200,
                 'data'   => new ValidationVenteResource($validation),
-            ]);
+            ], 200);
 
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
 
             return response()->json([
                 'status'  => 500,
@@ -83,8 +93,10 @@ class ValidationVenteService
 
         try {
 
+            // 🔒 Vente verrouillée
             $vente = LigneVente::visible()
                 ->with('cuve')
+                ->lockForUpdate()
                 ->find($data['id_vente']);
 
             if (! $vente) {
@@ -112,22 +124,25 @@ class ValidationVenteService
 
             $cuve = $vente->cuve;
 
-            if (! $cuve || $cuve->qte_actuelle < $qteVendu) {
+            if (! $cuve || $cuve->qt_actuelle < $qteVendu) {
                 return response()->json([
                     'status'  => 409,
                     'message' => 'Stock cuve insuffisant.',
                 ], 409);
             }
 
+            // 🔹 Validation
             $validation = ValidationVente::create([
                 'id_vente'    => $vente->id,
                 'commentaire' => $data['commentaire'] ?? null,
             ]);
 
+            // 🔹 Déduction stock
             $cuve->update([
-                'qte_actuelle' => $cuve->qte_actuelle - $qteVendu,
+                'qt_actuelle' => $cuve->qt_actuelle - $qteVendu,
             ]);
 
+            // 🔹 Clôture vente
             $vente->update([
                 'status' => true,
             ]);
@@ -138,11 +153,16 @@ class ValidationVenteService
                 'status'  => 201,
                 'message' => 'Vente validée avec succès.',
                 'data'    => new ValidationVenteResource(
-                    $validation->load('vente')
+                    $validation->load([
+                        'vente.affectation.pompe.station',
+                        'vente.affectation.user',
+                        'createdBy',
+                        'modifiedBy',
+                    ])
                 ),
             ], 201);
 
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
 
             DB::rollBack();
 
@@ -166,6 +186,7 @@ class ValidationVenteService
 
             $validation = ValidationVente::visible()
                 ->with('vente.cuve')
+                ->lockForUpdate()
                 ->find($id);
 
             if (! $validation) {
@@ -180,7 +201,7 @@ class ValidationVenteService
 
             if ($vente && $cuve) {
                 $cuve->update([
-                    'qte_actuelle' => $cuve->qte_actuelle + $vente->qte_vendu,
+                    'qt_actuelle' => $cuve->qt_actuelle + $vente->qte_vendu,
                 ]);
 
                 $vente->update([
@@ -195,9 +216,9 @@ class ValidationVenteService
             return response()->json([
                 'status'  => 200,
                 'message' => 'Validation supprimée et vente restaurée.',
-            ]);
+            ], 200);
 
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
 
             DB::rollBack();
 
