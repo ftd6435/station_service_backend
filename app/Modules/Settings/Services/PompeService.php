@@ -61,48 +61,57 @@ class PompeService
         }
     }
 
-    public function getDernierIndexPourAffectation(int $id_pompe): array
-    {
-        try {
+public function getDernierIndexPourAffectation(int $id_pompe): array
+{
+    // =================================================
+    // 🔒 CONTRAT : TOUJOURS retourner index_debut
+    // =================================================
+    $indexDebut = 0.0;
 
-            // =================================================
-            // 1. POMPE (EXISTENCE UNIQUEMENT)
-            // 👉 Pas de scope visible ici : calcul technique
-            // =================================================
-            $pompe = Pompe::withoutGlobalScopes()->findOrFail($id_pompe);
+    try {
 
-            // =================================================
-            // 2. DERNIÈRE VENTE DE LA POMPE (HISTORIQUE PUR)
-            // 👉 On ignore tous les scopes de LigneVente
-            // =================================================
-            $lastVente = LigneVente::withoutGlobalScopes()
-                ->whereHas('affectation', function ($q) use ($id_pompe) {
-                    $q->where('id_pompe', $id_pompe);
-                })
-                ->where('status', true) // vente fermée
-                ->orderByDesc('created_at')
-                ->first();
+        // 1. Pompe (existence uniquement)
+        $pompe = Pompe::withoutGlobalScopes()->find($id_pompe);
 
-            // =================================================
-            // 3. INDEX À RETOURNER
-            // =================================================
+        if (! $pompe) {
             return [
-                'status'      => 200,
-                'index_debut' => (float) (
-                    $lastVente && $lastVente->index_fin !== null
-                        ? $lastVente->index_fin
-                        : $pompe->index_initial
-                ),
-            ];
-
-        } catch (\Throwable $e) {
-
-            return [
-                'status' => 500,
-                'error'  => $e->getMessage(),
+                'status'      => 404,
+                'index_debut' => $indexDebut,
             ];
         }
+
+        // Valeur par défaut = index initial
+        $indexDebut = (float) $pompe->index_initial;
+
+        // 2. Dernière vente réelle de la pompe
+        $lastVente = LigneVente::withoutGlobalScopes()
+            ->whereHas('affectation', function ($q) use ($id_pompe) {
+                $q->where('id_pompe', $id_pompe);
+            })
+            ->where('status', true) // vente fermée
+            ->orderByDesc('created_at')
+            ->first();
+
+        if ($lastVente && $lastVente->index_fin !== null) {
+            $indexDebut = (float) $lastVente->index_fin;
+        }
+
+        return [
+            'status'      => 200,
+            'index_debut' => $indexDebut,
+        ];
+
+    } catch (\Throwable $e) {
+
+        // 🔥 Même en erreur → index_debut existe
+        return [
+            'status'      => 500,
+            'index_debut' => $indexDebut,
+            'error'       => $e->getMessage(), // pour debug / logs
+        ];
     }
+}
+
 
     public function store(array $data)
     {
