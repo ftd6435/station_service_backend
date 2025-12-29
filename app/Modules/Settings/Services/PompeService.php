@@ -67,23 +67,23 @@ public function getDernierIndexPourAffectation(int $id_pompe): array
     try {
 
         // =================================================
-        // 1. POMPE (EXISTENCE + VISIBILITÉ)
+        // 1. POMPE
         // =================================================
         $pompe = Pompe::visible()->findOrFail($id_pompe);
 
         // =================================================
-        // 2. DERNIÈRE VENTE (AFFECTATION FERMÉE)
+        // 2. DERNIÈRE VENTE (SANS SCOPE)
         // =================================================
-        $lastVente = LigneVente::whereHas('affectation', function ($q) use ($id_pompe) {
-                $q->where('id_pompe', $id_pompe)
-                  ->where('status', false); // ✅ affectation terminée
+        $lastVente = LigneVente::withoutGlobalScopes()
+            ->whereHas('affectation', function ($q) use ($id_pompe) {
+                $q->where('id_pompe', $id_pompe);
             })
             ->where('status', true) // vente fermée
             ->orderByDesc('created_at')
             ->first();
 
         // =================================================
-        // 3. INDEX À RETOURNER
+        // 3. INDEX
         // =================================================
         return [
             'status'      => 200,
