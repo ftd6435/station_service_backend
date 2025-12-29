@@ -36,6 +36,30 @@ class PompeService
             ]);
         }
     }
+    public function pompesDisponibles()
+{
+    try {
+
+        $pompes = Pompe::visible()
+            ->available()
+            ->orderBy('libelle')
+            ->get();
+
+        return response()->json([
+            'status' => 200,
+            'data'   => PompeResource::collection($pompes),
+        ]);
+
+    } catch (\Throwable $e) {
+
+        return response()->json([
+            'status'  => 500,
+            'message' => 'Erreur lors de la récupération des pompes disponibles.',
+            'error'   => $e->getMessage(),
+        ]);
+    }
+}
+
 
     public function store(array $data)
     {

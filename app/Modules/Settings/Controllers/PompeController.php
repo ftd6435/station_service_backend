@@ -11,9 +11,14 @@ class PompeController extends Controller
 {
     public function __construct(private PompeService $service) {}
 
+   
     public function index()
     {
         return $this->service->getAll();
+    }
+     public function  pompesDisponibles()
+    {
+        return $this->service->pompesDisponibles();
     }
 
     public function store(StorePompeRequest $request)

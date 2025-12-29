@@ -3,9 +3,12 @@
 namespace App\Modules\Settings\Models;
 
 use App\Modules\Administration\Models\User;
+use App\Modules\Settings\Models\Affectation;
+use App\Modules\Settings\Models\Station;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Auth;
 
 class Pompe extends Model
@@ -25,34 +28,26 @@ class Pompe extends Model
 
     /**
      * =================================================
-     * BOOT : AUDIT + RÉFÉRENCE
+     * BOOT : AUDIT + GÉNÉRATION RÉFÉRENCE
      * =================================================
      */
     protected static function booted(): void
     {
-        /*
-        |--------------------------------------------------
-        | CRÉATION : audit + référence automatique
-        |--------------------------------------------------
-        */
+        // 🔹 Création
         static::creating(function ($m) {
 
             if (Auth::check()) {
                 $m->created_by = Auth::id();
             }
 
-            // Génération automatique de la référence
+            // 🔹 Référence automatique
             if (empty($m->reference)) {
                 $nextId = self::withoutGlobalScopes()->max('id') + 1;
                 $m->reference = 'PMP-' . str_pad($nextId, 3, '0', STR_PAD_LEFT);
             }
         });
 
-        /*
-        |--------------------------------------------------
-        | MISE À JOUR : audit
-        |--------------------------------------------------
-        */
+        // 🔹 Mise à jour
         static::updating(function ($m) {
             if (Auth::check()) {
                 $m->modify_by = Auth::id();
@@ -62,7 +57,7 @@ class Pompe extends Model
 
     /**
      * =================================================
-     * SCOPE LOCAL : VISIBILITÉ DES POMPES
+     * SCOPE : VISIBILITÉ DES POMPES
      * =================================================
      */
     public function scopeVisible(Builder $query): Builder
@@ -82,11 +77,8 @@ class Pompe extends Model
                 return $query;
 
             /**
-             * 🔵 ADMIN
-             * 🟣 SUPERVISEUR
-             * 🟡 GÉRANT
-             * → pompes de la station issue
-             *   de la DERNIÈRE affectation active
+             * 🔵 ADMIN / 🟣 SUPERVISEUR / 🟡 GÉRANT
+             * → pompes de leur station (via affectation active)
              */
             case 'admin':
             case 'superviseur':
@@ -105,7 +97,7 @@ class Pompe extends Model
 
             /**
              * 🔴 POMPISTE
-             * → pompes via son affectation active
+             * → uniquement la pompe à laquelle il est affecté
              */
             case 'pompiste':
 
@@ -114,25 +106,49 @@ class Pompe extends Model
                       ->where('status', true);
                 });
 
-            /**
-             * ❌ AUTRES CAS
-             */
             default:
                 return $query->whereRaw('1 = 0');
         }
     }
 
     /**
-     * ============================
+     * =================================================
+     * SCOPE : POMPES DISPONIBLES
+     * → aucune affectation active
+     * =================================================
+     */
+    public function scopeAvailable(Builder $query): Builder
+    {
+        return $query->whereDoesntHave('affectations', function (Builder $q) {
+            $q->where('status', true);
+        });
+    }
+
+    /**
+     * =================================================
      * RELATIONS
-     * ============================
+     * =================================================
      */
 
+    /**
+     * Station propriétaire
+     */
     public function station(): BelongsTo
     {
         return $this->belongsTo(Station::class, 'id_station');
     }
 
+    /**
+     * Affectations liées à la pompe
+     */
+    public function affectations(): HasMany
+    {
+        return $this->hasMany(Affectation::class, 'id_pompe');
+    }
+
+    /**
+     * Audit
+     */
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
