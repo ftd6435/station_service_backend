@@ -18,8 +18,9 @@ Route::middleware(['station.db', 'auth:sanctum'])->prefix('v1/vente')->group(fun
 
     Route::get(
         'liste',
-        [LigneVenteController::class, 'index']
+        [ValidationVenteController::class, 'index']
     );
+
     Route::post(
         'validation/ligne-ventes',
         [ValidationVenteController::class, 'store']
