@@ -45,6 +45,8 @@ class ValidationVenteResource extends JsonResource
                         ? [
                             'id'   => $this->vente->affectation->user->id,
                             'name' => $this->vente->affectation->user->name,
+                            'email' => $this->vente->affectation->user->email,
+                            'telephone' => $this->vente->affectation->user->telephone,
                           ]
                         : null,
                 ];
