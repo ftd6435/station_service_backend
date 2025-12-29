@@ -19,9 +19,9 @@ class ValidationVente extends Model
     ];
 
     /**
-     * =================================================
+     * =========================
      * BOOT : AUDIT
-     * =================================================
+     * =========================
      */
     protected static function booted(): void
     {
@@ -39,63 +39,22 @@ class ValidationVente extends Model
     }
 
     /**
-     * =================================================
-     * SCOPE : VISIBILITÉ (RÈGLE MÉTIER FINALE)
-     * =================================================
+     * =========================
+     * SCOPE : VISIBILITÉ
+     * (ALIGNÉ À LigneVente)
+     * =========================
      */
     public function scopeVisible(Builder $query): Builder
     {
-        $user = Auth::user();
-
-        if (! $user) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        /**
-         * 🔥 SUPER ADMIN
-         * → voit TOUTES les validations (toutes stations)
-         */
-        if ($user->role === 'super_admin') {
-            return $query;
-        }
-
-        /**
-         * 🔹 ADMIN / GÉRANT / SUPERVISEUR
-         * → visibilité limitée à leur station
-         */
-        if (in_array($user->role, ['admin', 'gerant', 'superviseur'], true)) {
-
-            $stationId = $user->affectations()
-                ->where('status', true)
-                ->latest('created_at')
-                ->value('id_station');
-
-            if (! $stationId) {
-                return $query->whereRaw('1 = 0');
-            }
-
-            return $query->whereHas('vente.affectation.pompe', function ($q) use ($stationId) {
-                $q->where('id_station', $stationId);
-            });
-        }
-
-        /**
-         * 🔹 POMPISTE
-         * → uniquement ses ventes
-         */
-        if ($user->role === 'pompiste') {
-            return $query->whereHas('vente.affectation', function ($q) use ($user) {
-                $q->where('id_user', $user->id);
-            });
-        }
-
-        return $query->whereRaw('1 = 0');
+        return $query->whereHas('vente', function ($q) {
+            $q->visible();
+        });
     }
 
     /**
-     * =================================================
+     * =========================
      * RELATIONS
-     * =================================================
+     * =========================
      */
     public function vente()
     {
