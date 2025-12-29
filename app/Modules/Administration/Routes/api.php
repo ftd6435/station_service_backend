@@ -9,7 +9,7 @@ Route::prefix('v1/admin')->middleware('station.db')->group(function () {
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('users', UserController::class);
-        Route::get('pompiste-dispo',[UserController::class,' pompisteDisp']);
+        Route::get('pompiste-dispo',[UserController::class,'pompisteDisp']);
         Route::apiResource('affectation', AffectationController::class);
     });
 });
