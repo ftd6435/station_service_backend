@@ -46,6 +46,32 @@ class UserService
         }
     }
 
+
+   public function pompisteDisp()
+{
+    try {
+
+        $pompistes = User::visible()
+            ->pompistesDisponibles()
+            ->orderBy('name')
+            ->get();
+
+        return response()->json([
+            'status' => 200,
+            'data'   => UserResource::collection($pompistes),
+        ]);
+
+    } catch (\Throwable $e) {
+
+        return response()->json([
+            'status'  => 500,
+            'message' => 'Erreur lors de la récupération des utilisateurs.',
+            'error'   => $e->getMessage(),
+        ]);
+    }
+}
+
+
     /**
      * ============================
      * Création utilisateur

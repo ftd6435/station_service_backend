@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Modules\Administration\Models;
 
 use App\Modules\Settings\Models\Affectation;
@@ -83,29 +82,28 @@ class User extends Authenticatable
         switch ($auth->role) {
 
             /**
-             * 🔥 SUPER ADMIN
-             * → voit tout
-             */
+                 * 🔥 SUPER ADMIN
+                 * → voit tout
+                 */
             case 'super_admin':
                 return $query;
 
             /**
-             * 🔵 ADMIN
-             * 🟡 GÉRANT
-             * 🟣 SUPERVISEUR
-             * → users de la station :
-             *   - créés avec users.id_station
-             *   - OU affectés à la station
-             */
+                 * 🔵 ADMIN
+                 * 🟡 GÉRANT
+                 * 🟣 SUPERVISEUR
+                 * → users de la station :
+                 *   - créés avec users.id_station
+                 *   - OU affectés à la station
+                 */
             case 'admin':
             case 'gerant':
             case 'superviseur':
 
-                $stationId = $auth->id_station
-                    ?? $auth->affectations()
-                        ->where('status', true)
-                        ->latest('created_at')
-                        ->value('id_station');
+                $stationId = $auth->id_station ?? $auth->affectations()
+                    ->where('status', true)
+                    ->latest('created_at')
+                    ->value('id_station');
 
                 if (! $stationId) {
                     return $query->whereRaw('1 = 0');
@@ -116,19 +114,19 @@ class User extends Authenticatable
                     // Users créés pour la station
                     $q->where('id_station', $stationId)
 
-                      // OU users affectés à la station
-                      ->orWhereHas('affectations', function (Builder $qa) use ($stationId) {
-                          $qa->where('id_station', $stationId)
-                             ->where('status', true);
-                      });
+                    // OU users affectés à la station
+                        ->orWhereHas('affectations', function (Builder $qa) use ($stationId) {
+                            $qa->where('id_station', $stationId)
+                                ->where('status', true);
+                        });
                 });
 
             /**
-             * 🔴 POMPISTE
-             * → users de la même pompe
-             * → sinon users de la station
-             * → uniquement via affectation
-             */
+                 * 🔴 POMPISTE
+                 * → users de la même pompe
+                 * → sinon users de la station
+                 * → uniquement via affectation
+                 */
             case 'pompiste':
 
                 $affectation = $auth->affectations()
@@ -144,7 +142,7 @@ class User extends Authenticatable
                 if (! empty($affectation->id_pompe)) {
                     return $query->whereHas('affectations', function (Builder $q) use ($affectation) {
                         $q->where('id_pompe', $affectation->id_pompe)
-                          ->where('status', true);
+                            ->where('status', true);
                     });
                 }
 
@@ -152,15 +150,15 @@ class User extends Authenticatable
                 if (! empty($affectation->id_station)) {
                     return $query->whereHas('affectations', function (Builder $q) use ($affectation) {
                         $q->where('id_station', $affectation->id_station)
-                          ->where('status', true);
+                            ->where('status', true);
                     });
                 }
 
                 return $query->whereRaw('1 = 0');
 
             /**
-             * ❌ AUTRES CAS
-             */
+                 * ❌ AUTRES CAS
+                 */
             default:
                 return $query->whereRaw('1 = 0');
         }
@@ -182,6 +180,21 @@ class User extends Authenticatable
     }
 
     /**
+     * =================================================
+     * SCOPE : POMPISTES DISPONIBLES
+     * → pompistes sans affectation active
+     * =================================================
+     */
+    public function scopePompistesDisponibles(Builder $query): Builder
+    {
+        return $query
+            ->where('role', 'pompiste')
+            ->whereDoesntHave('affectations', function (Builder $q) {
+                $q->where('status', true);
+            });
+    }
+
+    /**
      * Station courante (via affectation active)
      */
     public function station()
@@ -194,8 +207,8 @@ class User extends Authenticatable
             'id',
             'id_station'
         )
-        ->where('affectations.status', true)
-        ->latest('affectations.created_at');
+            ->where('affectations.status', true)
+            ->latest('affectations.created_at');
     }
 
     /**

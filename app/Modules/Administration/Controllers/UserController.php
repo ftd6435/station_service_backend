@@ -28,6 +28,11 @@ class UserController extends Controller
         return $this->userService->getAll();
     }
 
+     public function pompisteDisp()
+    {
+        return $this->userService->pompisteDisp();
+    }
+
     /**
      * ============================
      * Création utilisateur
@@ -77,4 +82,6 @@ class UserController extends Controller
     {
         return $this->userService->login($request->validated());
     }
+
+    
 }
