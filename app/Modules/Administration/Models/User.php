@@ -27,6 +27,7 @@ class User extends Authenticatable
         'image',
         'role',
         'id_ville',
+        'id_station',
         'status',
         'password',
         'created_by',
@@ -48,7 +49,7 @@ class User extends Authenticatable
 
     /**
      * =================================================
-     * BOOT : AUDIT UNIQUEMENT
+     * BOOT : AUDIT
      * =================================================
      */
     protected static function booted(): void
@@ -68,8 +69,7 @@ class User extends Authenticatable
 
     /**
      * =================================================
-     * SCOPE LOCAL : VISIBILITÉ DES UTILISATEURS
-     * (100 % basé sur la DERNIÈRE affectation active)
+     * SCOPE : VISIBILITÉ DES UTILISATEURS
      * =================================================
      */
     public function scopeVisible(Builder $query): Builder
@@ -91,34 +91,43 @@ class User extends Authenticatable
 
             /**
              * 🔵 ADMIN
-             * 🟣 SUPERVISEUR
              * 🟡 GÉRANT
-             * → utilisateurs de la même STATION
-             *   via affectation active
+             * 🟣 SUPERVISEUR
+             * → users de la station :
+             *   - créés avec users.id_station
+             *   - OU affectés à la station
              */
             case 'admin':
-            case 'superviseur':
             case 'gerant':
+            case 'superviseur':
 
-                $stationId = $auth->affectations()
-                    ->where('status', true)
-                    ->latest('created_at')
-                    ->value('id_station');
+                $stationId = $auth->id_station
+                    ?? $auth->affectations()
+                        ->where('status', true)
+                        ->latest('created_at')
+                        ->value('id_station');
 
                 if (! $stationId) {
                     return $query->whereRaw('1 = 0');
                 }
 
-                return $query->whereHas('affectations', function (Builder $q) use ($stationId) {
+                return $query->where(function (Builder $q) use ($stationId) {
+
+                    // Users créés pour la station
                     $q->where('id_station', $stationId)
-                      ->where('status', true);
+
+                      // OU users affectés à la station
+                      ->orWhereHas('affectations', function (Builder $qa) use ($stationId) {
+                          $qa->where('id_station', $stationId)
+                             ->where('status', true);
+                      });
                 });
 
             /**
              * 🔴 POMPISTE
-             * → utilisateurs de la même POMPE
-             *   sinon fallback STATION
-             *   via affectation active
+             * → users de la même pompe
+             * → sinon users de la station
+             * → uniquement via affectation
              */
             case 'pompiste':
 
@@ -131,7 +140,7 @@ class User extends Authenticatable
                     return $query->whereRaw('1 = 0');
                 }
 
-                // 🔹 Priorité : même pompe
+                // Priorité : même pompe
                 if (! empty($affectation->id_pompe)) {
                     return $query->whereHas('affectations', function (Builder $q) use ($affectation) {
                         $q->where('id_pompe', $affectation->id_pompe)
@@ -139,7 +148,7 @@ class User extends Authenticatable
                     });
                 }
 
-                // 🔹 Fallback : même station
+                // Fallback : même station
                 if (! empty($affectation->id_station)) {
                     return $query->whereHas('affectations', function (Builder $q) use ($affectation) {
                         $q->where('id_station', $affectation->id_station)
@@ -164,7 +173,7 @@ class User extends Authenticatable
      */
 
     /**
-     * Historique des affectations de l'utilisateur
+     * Affectations de l'utilisateur
      */
     public function affectations()
     {
@@ -173,8 +182,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Station courante
-     * → dérivée STRICTEMENT de l’affectation active
+     * Station courante (via affectation active)
      */
     public function station()
     {
