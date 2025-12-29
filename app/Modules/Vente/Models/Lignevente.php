@@ -135,7 +135,7 @@ class LigneVente extends Model
     public function cuve()
     {
         return $this->belongsTo(
-            Produit::class,
+            Cuve::class,
             'id_cuve'
         );
     }

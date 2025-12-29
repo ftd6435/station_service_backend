@@ -9,9 +9,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Auth;
 
-class Produit extends Model
+class Cuve extends Model
 {
-    protected $table = 'produits';
+    protected $table = 'cuves';
 
     protected $fillable = [
         'libelle',

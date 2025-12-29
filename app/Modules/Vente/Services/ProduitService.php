@@ -2,6 +2,7 @@
 
 namespace App\Modules\Vente\Services;
 
+use App\Modules\Vente\Models\Cuve;
 use App\Modules\Vente\Models\Produit;
 use App\Modules\Vente\Resources\ProduitResource;
 use Exception;
@@ -17,7 +18,7 @@ class ProduitService
     {
         try {
 
-            $produits = Produit::visible()
+            $produits = Cuve::visible()
                 ->orderBy('libelle')
                 ->get();
 
@@ -45,7 +46,7 @@ class ProduitService
     {
         try {
 
-            $produit = Produit::visible()->findOrFail($id);
+            $produit = Cuve::visible()->findOrFail($id);
 
             return response()->json([
                 'status' => 200,
@@ -71,7 +72,7 @@ class ProduitService
     {
         try {
 
-            $produit = Produit::create($data);
+            $produit = Cuve::create($data);
 
             return response()->json([
                 'status'  => 200,
@@ -98,7 +99,7 @@ class ProduitService
     {
         try {
 
-            $produit = Produit::visible()->findOrFail($id);
+            $produit = Cuve::visible()->findOrFail($id);
             $produit->update($data);
 
             return response()->json([
@@ -126,7 +127,7 @@ class ProduitService
     {
         try {
 
-            $produit = Produit::visible()->findOrFail($id);
+            $produit = Cuve::visible()->findOrFail($id);
             $produit->delete();
 
             return response()->json([

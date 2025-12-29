@@ -81,7 +81,7 @@ class ApprovisionnementCuve extends Model
      */
     public function cuve(): BelongsTo
     {
-        return $this->belongsTo(Produit::class, 'id_cuve');
+        return $this->belongsTo(Cuve::class, 'id_cuve');
     }
 
     public function createdBy(): BelongsTo

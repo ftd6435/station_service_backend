@@ -15,7 +15,7 @@ class StoreProduitRequest extends FormRequest
     {
         return [
             'libelle'      => 'required|string|max:255',
-            'type_produit' => 'required|string|max:100',
+            'type_cuve' => 'required|string|max:100',
 
             'qt_initial'  => 'nullable|numeric|min:0',
             'qt_actuelle' => 'nullable|numeric|min:0',
