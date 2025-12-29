@@ -120,7 +120,7 @@ class Pompe extends Model
     public function scopeAvailable(Builder $query): Builder
     {
         return $query->whereDoesntHave('affectations', function (Builder $q) {
-            $q->where('status', true);
+            $q->where('status', false);
         });
     }
 
