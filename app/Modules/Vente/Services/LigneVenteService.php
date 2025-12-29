@@ -100,7 +100,7 @@ class LigneVenteService
             // =================================================
             // 1. Récupération ligne de vente
             // =================================================
-            $item = LigneVente::visible()->find($id);
+            $item = LigneVente::find($id);
 
             if (! $item) {
                 return response()->json([
