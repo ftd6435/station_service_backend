@@ -14,7 +14,7 @@ class ApprovisionnementCuveRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'id_cuve'      => ['required', 'exists:produits,id'],
+            'id_cuve'      => ['required', 'exists:cuves,id'],
             'qte_appro'    => ['required', 'numeric', 'min:0.01'],
             'pu_unitaire'  => ['required', 'numeric', 'min:0'],
             'commentaire'  => ['nullable', 'string'],
