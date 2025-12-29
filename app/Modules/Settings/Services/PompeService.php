@@ -38,71 +38,71 @@ class PompeService
         }
     }
     public function pompesDisponibles()
-{
-    try {
+    {
+        try {
 
-        $pompes = Pompe::visible()
-            ->available()
-            ->orderBy('libelle')
-            ->get();
+            $pompes = Pompe::visible()
+                ->available()
+                ->orderBy('libelle')
+                ->get();
 
-        return response()->json([
-            'status' => 200,
-            'data'   => PompeResource::collection($pompes),
-        ]);
+            return response()->json([
+                'status' => 200,
+                'data'   => PompeResource::collection($pompes),
+            ]);
 
-    } catch (\Throwable $e) {
+        } catch (\Throwable $e) {
 
-        return response()->json([
-            'status'  => 500,
-            'message' => 'Erreur lors de la récupération des pompes disponibles.',
-            'error'   => $e->getMessage(),
-        ]);
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors de la récupération des pompes disponibles.',
+                'error'   => $e->getMessage(),
+            ]);
+        }
     }
-}
 
+    public function getDernierIndexPourAffectation(int $id_pompe): array
+    {
+        try {
 
-public function getDernierIndexPourAffectation(int $id_pompe): array
-{
-    try {
+            // =================================================
+            // 1. POMPE (EXISTENCE UNIQUEMENT)
+            // 👉 Pas de scope visible ici : calcul technique
+            // =================================================
+            $pompe = Pompe::withoutGlobalScopes()->findOrFail($id_pompe);
 
-        // =================================================
-        // 1. POMPE
-        // =================================================
-        $pompe = Pompe::visible()->findOrFail($id_pompe);
+            // =================================================
+            // 2. DERNIÈRE VENTE DE LA POMPE (HISTORIQUE PUR)
+            // 👉 On ignore tous les scopes de LigneVente
+            // =================================================
+            $lastVente = LigneVente::withoutGlobalScopes()
+                ->whereHas('affectation', function ($q) use ($id_pompe) {
+                    $q->where('id_pompe', $id_pompe);
+                })
+                ->where('status', true) // vente fermée
+                ->orderByDesc('created_at')
+                ->first();
 
-        // =================================================
-        // 2. DERNIÈRE VENTE (SANS SCOPE)
-        // =================================================
-        $lastVente = LigneVente::withoutGlobalScopes()
-            ->whereHas('affectation', function ($q) use ($id_pompe) {
-                $q->where('id_pompe', $id_pompe);
-            })
-            ->where('status', true) // vente fermée
-            ->orderByDesc('created_at')
-            ->first();
+            // =================================================
+            // 3. INDEX À RETOURNER
+            // =================================================
+            return [
+                'status'      => 200,
+                'index_debut' => (float) (
+                    $lastVente && $lastVente->index_fin !== null
+                        ? $lastVente->index_fin
+                        : $pompe->index_initial
+                ),
+            ];
 
-        // =================================================
-        // 3. INDEX
-        // =================================================
-        return [
-            'status'      => 200,
-            'index_debut' => (float) (
-                $lastVente && ! is_null($lastVente->index_fin)
-                    ? $lastVente->index_fin
-                    : $pompe->index_initial
-            ),
-        ];
+        } catch (\Throwable $e) {
 
-    } catch (\Throwable $e) {
-
-        return [
-            'status' => 500,
-            'error'  => $e->getMessage(),
-        ];
+            return [
+                'status' => 500,
+                'error'  => $e->getMessage(),
+            ];
+        }
     }
-}
-
 
     public function store(array $data)
     {
