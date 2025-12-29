@@ -23,7 +23,7 @@ class StoreUserRequest extends FormRequest
             'password'   => 'nullable|string|min:6',
 
             // Coordonnées
-            'telephone'  => 'nullable|string|max:30',
+            'telephone'  => 'nullable|string|max:30|unique:users,telephone',
             'adresse'    => 'nullable|string|max:150',
 
             // Image utilisateur
