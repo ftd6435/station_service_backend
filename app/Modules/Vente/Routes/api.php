@@ -13,6 +13,11 @@ Route::middleware(['station.db','auth:sanctum'])->prefix('v1/vente')->group(func
     'ligne-ventes/index-fin/{id}',
     [LigneVenteController::class, 'update']
 );
+
+  Route::get(
+    'liste',
+    [LigneVenteController::class, 'index']
+);
 Route::post(
             'validation/ligne-ventes',
             [ValidationVenteController::class, 'store']
