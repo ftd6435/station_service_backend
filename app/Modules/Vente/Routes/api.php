@@ -5,6 +5,7 @@ use App\Modules\Vente\Controllers\LigneVenteController;
 use App\Modules\Vente\Controllers\PerteCuveController;
 use App\Modules\Vente\Controllers\ProduitController;
 use App\Modules\Vente\Controllers\ValidationVenteController;
+use App\Modules\Vente\Controllers\VenteLitreController;
 use Illuminate\Support\Facades\Route;
 Route::middleware(['station.db','auth:sanctum'])->prefix('v1/vente')->group(function () {
     Route::apiResource('cuves',ProduitController::class);
@@ -25,6 +26,7 @@ Route::post(
 
       Route::apiResource('appro',ApprovisionnementCuveController::class);
        Route::apiResource('validation',ValidationVenteController::class);
+       Route::apiResource('ventre-par-lite',VenteLitreController::class);
       Route::apiResource('perte-cuves',PerteCuveController::class);
    
 
