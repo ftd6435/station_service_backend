@@ -28,7 +28,7 @@ Route::middleware(['station.db', 'auth:sanctum'])->prefix('v1/vente')->group(fun
 
     Route::apiResource('appro', ApprovisionnementCuveController::class);
     Route::apiResource('validation', ValidationVenteController::class);
-    Route::apiResource('ventre-par-litre', VenteLitreController::class);
+    Route::apiResource('vente-par-litre', VenteLitreController::class);
     Route::apiResource('perte-cuves', PerteCuveController::class);
 
 });
