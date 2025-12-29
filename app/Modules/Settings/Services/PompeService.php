@@ -3,6 +3,7 @@ namespace App\Modules\Settings\Services;
 
 use App\Modules\Settings\Models\Pompe;
 use App\Modules\Settings\Resources\PompeResource;
+use App\Modules\Vente\Models\LigneVente;
 use Exception;
 
 class PompeService
@@ -57,6 +58,48 @@ class PompeService
             'message' => 'Erreur lors de la récupération des pompes disponibles.',
             'error'   => $e->getMessage(),
         ]);
+    }
+}
+
+
+public function getDernierIndexPourAffectation(int $id_pompe): array
+{
+    try {
+
+        // =================================================
+        // 1. POMPE (EXISTENCE + VISIBILITÉ)
+        // =================================================
+        $pompe = Pompe::visible()->findOrFail($id_pompe);
+
+        // =================================================
+        // 2. DERNIÈRE VENTE (AFFECTATION FERMÉE)
+        // =================================================
+        $lastVente = LigneVente::whereHas('affectation', function ($q) use ($id_pompe) {
+                $q->where('id_pompe', $id_pompe)
+                  ->where('status', false); // ✅ affectation terminée
+            })
+            ->where('status', true) // vente fermée
+            ->orderByDesc('created_at')
+            ->first();
+
+        // =================================================
+        // 3. INDEX À RETOURNER
+        // =================================================
+        return [
+            'status'      => 200,
+            'index_debut' => (float) (
+                $lastVente && ! is_null($lastVente->index_fin)
+                    ? $lastVente->index_fin
+                    : $pompe->index_initial
+            ),
+        ];
+
+    } catch (\Throwable $e) {
+
+        return [
+            'status' => 500,
+            'error'  => $e->getMessage(),
+        ];
     }
 }
 

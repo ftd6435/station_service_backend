@@ -4,17 +4,29 @@ namespace App\Modules\Settings\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Modules\Settings\Services\PompeService;
 
 class PompeResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        /** @var PompeService $pompeService */
+        $pompeService = app(PompeService::class);
+
+        $indexData = $pompeService->getDernierIndexPourAffectation($this->id);
+
         return [
             'id'            => $this->id,
             'libelle'       => $this->libelle,
             'reference'     => $this->reference,
             'type_pompe'    => $this->type_pompe,
             'index_initial' => $this->index_initial,
+
+            // =========================
+            // INDEX MÉTIER
+            // =========================
+            'index_debut'   => $indexData['index_debut'] ?? null,
+
             'status'        => $this->status,
 
             // =========================
