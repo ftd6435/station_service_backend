@@ -3,6 +3,7 @@
 namespace App\Modules\Vente\Services;
 
 use App\Modules\Vente\Models\ApprovisionnementCuve;
+use App\Modules\Vente\Models\Cuve;
 use App\Modules\Vente\Models\Produit;
 use App\Modules\Vente\Resources\ApprovisionnementCuveResource;
 use Exception;
@@ -79,7 +80,7 @@ class ApprovisionnementCuveService
             DB::transaction(function () use ($data, &$appro) {
 
                 // 🔐 Sécurité visibilité cuve
-                $cuve = Produit::visible()->findOrFail($data['id_cuve']);
+                $cuve = Cuve::visible()->findOrFail($data['id_cuve']);
 
                 // 1️⃣ Création historique
                 $appro = ApprovisionnementCuve::create($data);
@@ -118,7 +119,7 @@ class ApprovisionnementCuveService
 
                 $appro = ApprovisionnementCuve::visible()->findOrFail($id);
 
-                $cuve = Produit::visible()->findOrFail($appro->id_cuve);
+                $cuve = Cuve::visible()->findOrFail($appro->id_cuve);
 
                 // 🔢 Différence de quantité
                 $ancienneQte = (float) $appro->qte_appro;
@@ -164,7 +165,7 @@ class ApprovisionnementCuveService
 
                 $appro = ApprovisionnementCuve::visible()->findOrFail($id);
 
-                $cuve = Produit::visible()->findOrFail($appro->id_cuve);
+                $cuve = Cuve::visible()->findOrFail($appro->id_cuve);
 
                 // 🔻 Rétablir le stock
                 $cuve->decrement('qt_actuelle', $appro->qte_appro);
