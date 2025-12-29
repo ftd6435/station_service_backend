@@ -77,7 +77,7 @@ class LigneVente extends Model
             case 'admin':
             case 'superviseur':
             case 'gerant':
-// a faire une annoation
+
                 $stationId = $user->affectations()
                     ->where('status', true)
                     ->latest('created_at')
