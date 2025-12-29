@@ -128,4 +128,16 @@ class Cuve extends Model
     {
         return $this->belongsTo(User::class, 'modify_by');
     }
+
+
+    // App\Modules\Vente\Models\Cuve.php
+
+public function ligneVentes()
+{
+    return $this->hasMany(
+        LigneVente::class,
+        'id_cuve'
+    );
+}
+
 }

@@ -2,6 +2,7 @@
 
 use App\Modules\Vente\Controllers\ApprovisionnementCuveController;
 use App\Modules\Vente\Controllers\LigneVenteController;
+use App\Modules\Vente\Controllers\PerteCuveController;
 use App\Modules\Vente\Controllers\ProduitController;
 use Illuminate\Support\Facades\Route;
 Route::middleware(['station.db','auth:sanctum'])->prefix('v1/vente')->group(function () {
@@ -13,6 +14,7 @@ Route::middleware(['station.db','auth:sanctum'])->prefix('v1/vente')->group(func
 );
 
       Route::apiResource('appro',ApprovisionnementCuveController::class);
+      Route::apiResource('perte-cuves',PerteCuveController::class);
    
 
     
