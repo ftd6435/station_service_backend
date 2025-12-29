@@ -24,10 +24,10 @@ Route::post(
             [ValidationVenteController::class, 'store']
         );
 
-      Route::apiResource('appro',ApprovisionnementCuveController::class);
-       Route::apiResource('validation',ValidationVenteController::class);
-       Route::apiResource('ventre-par-lite',VenteLitreController::class);
-      Route::apiResource('perte-cuves',PerteCuveController::class);
+    Route::apiResource('appro',ApprovisionnementCuveController::class);
+    Route::apiResource('validation',ValidationVenteController::class);
+    Route::apiResource('ventre-par-lite',VenteLitreController::class);
+    Route::apiResource('perte-cuves',PerteCuveController::class);
    
 
     
