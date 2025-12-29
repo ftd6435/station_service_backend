@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Modules\Vente\Services;
 
 use App\Modules\Vente\Models\LigneVente;
@@ -98,21 +97,69 @@ class LigneVenteService
     {
         try {
 
-            $item = LigneVente::visible()->findOrFail($id);
-            $item->update($data);
+            // =================================================
+            // 1. Récupération ligne de vente
+            // =================================================
+            $item = LigneVente::visible()->find($id);
+
+            if (! $item) {
+                return response()->json([
+                    'status'  => 404,
+                    'message' => 'Ligne de vente introuvable.',
+                ]);
+            }
+
+            // =================================================
+            // 2. Index existant (déjà en base)
+            // =================================================
+            $indexDebut = (float) $item->index_debut;
+
+            // Index fin envoyé
+            $indexFin = isset($data['index_fin'])
+                ? (float) $data['index_fin']
+                : null;
+
+            if ($indexFin === null) {
+                return response()->json([
+                    'status'  => 400,
+                    'message' => 'Index fin requis pour la mise à jour.',
+                ]);
+            }
+
+            // =================================================
+            // 3. Sécurité métier : cohérence des index
+            // =================================================
+            if ($indexFin < $indexDebut) {
+                return response()->json([
+                    'status'  => 409,
+                    'message' => 'Index incohérent : index_fin doit être supérieur ou égal à index_debut.',
+                ]);
+            }
+
+            // =================================================
+            // 4. Calcul automatique de la quantité vendue
+            // =================================================
+            $qteVendu = $indexFin - $indexDebut;
+
+            // =================================================
+            // 5. Mise à jour sécurisée
+            // =================================================
+            $item->update([
+                'index_fin' => $indexFin,
+                'qte_vendu' => $qteVendu,
+            ]);
 
             return response()->json([
                 'status'  => 200,
                 'message' => 'Ligne de vente modifiée avec succès.',
-                'data'    => new LigneVenteResource($item),
+                'data'    => new LigneVenteResource($item->fresh()),
             ]);
 
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Erreur lors de la modification de la ligne de vente.',
-                'error'   => $e->getMessage(),
+                'message' => 'Erreur interne lors de la modification de la ligne de vente.',
             ], 500);
         }
     }
