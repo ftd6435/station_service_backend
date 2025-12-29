@@ -25,7 +25,7 @@ class PompeResource extends JsonResource
             // =========================
             // INDEX MÉTIER
             // =========================
-            'index_debut'   => $indexData['index_debut'] ?? null,
+            'index_fin'   => $indexData['index_debut'] ?? null,
 
             'status'        => $this->status,
 
