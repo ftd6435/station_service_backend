@@ -15,7 +15,7 @@ Route::middleware(['station.db', 'auth:sanctum'])->prefix('v1/vente')->group(fun
         'ligne-ventes/index-fin/{id}',
         [LigneVenteController::class, 'update']
     );
-     Route::post(
+     Route::get(
         'liste/lignes-ventes',
         [LigneVenteController::class, 'index']
     );
