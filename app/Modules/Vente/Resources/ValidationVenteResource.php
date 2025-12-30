@@ -22,6 +22,7 @@ class ValidationVenteResource extends JsonResource
                     'index_debut' => (float) $this->vente->index_debut,
                     'index_fin'   => (float) $this->vente->index_fin,
                     'qte_vendu'   => (float) $this->vente->qte_vendu,
+                    'status'   => (float) $this->vente->status?'validée':"en cours",
 
                     // =============================================
                     // 🔹 AFFECTATION / CONTEXTE
