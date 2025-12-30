@@ -15,49 +15,68 @@ class LigneVenteService
      * LISTE DES LIGNES DE VENTE
      * =========================
      */
-    public function getAll(): JsonResponse
-    {
-        try {
-            $items = LigneVente::visible()
-                ->orderByDesc('created_at')
-                ->get();
+   public function getAll(): JsonResponse
+{
+    try {
+        $items = LigneVente::visible()
+            ->with([
+                'station',
+                'cuve',
+                'affectation.pompe.station',
+                'affectation.user',
+                'createdBy',
+                'modifiedBy',
+            ])
+            ->orderByDesc('created_at')
+            ->get();
 
-            return response()->json([
-                'status' => 200,
-                'data'   => LigneVenteResource::collection($items),
-            ], 200);
+        return response()->json([
+            'status' => 200,
+            'data'   => LigneVenteResource::collection($items),
+        ], 200);
 
-        } catch (Throwable $e) {
-            return response()->json([
-                'status'  => 500,
-                'message' => 'Erreur lors de la récupération des lignes de vente.',
-                'error'   => $e->getMessage(),
-            ], 500);
-        }
+    } catch (Throwable $e) {
+        return response()->json([
+            'status'  => 500,
+            'message' => 'Erreur lors de la récupération des lignes de vente.',
+            'error'   => $e->getMessage(),
+        ], 500);
     }
+}
+
 
     /**
      * =========================
      * DÉTAIL D’UNE LIGNE DE VENTE
      * =========================
      */
-    public function getOne(int $id): JsonResponse
-    {
-        try {
-            $item = LigneVente::visible()->findOrFail($id);
+   public function getOne(int $id): JsonResponse
+{
+    try {
+        $item = LigneVente::visible()
+            ->with([
+                'station',
+                'cuve',
+                'affectation.pompe.station',
+                'affectation.user',
+                'createdBy',
+                'modifiedBy',
+            ])
+            ->findOrFail($id);
 
-            return response()->json([
-                'status' => 200,
-                'data'   => new LigneVenteResource($item),
-            ], 200);
+        return response()->json([
+            'status' => 200,
+            'data'   => new LigneVenteResource($item),
+        ], 200);
 
-        } catch (Throwable $e) {
-            return response()->json([
-                'status'  => 404,
-                'message' => 'Ligne de vente introuvable.',
-            ], 404);
-        }
+    } catch (Throwable $e) {
+        return response()->json([
+            'status'  => 404,
+            'message' => 'Ligne de vente introuvable.',
+        ], 404);
     }
+}
+
 
     /**
      * =========================

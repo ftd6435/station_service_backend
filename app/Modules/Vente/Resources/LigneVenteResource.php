@@ -10,38 +10,61 @@ class LigneVenteResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            // =========================
-            // IDENTITÉ
-            // =========================
             'id'          => $this->id,
-            'status'      => $this->status,
 
-            // =========================
-            // DONNÉES DE VENTE
-            // =========================
-            'index_debut' => $this->index_debut,
-            'index_fin'   => $this->index_fin,
-            'qte_vendu'   => $this->qte_vendu,
+            'index_debut' => (float) $this->index_debut,
+            'index_fin'   => (float) $this->index_fin,
+            'qte_vendu'   => (float) $this->qte_vendu,
+            'status'      => (bool) $this->status,
+            'commentaire' => $this->commentaire,
 
-            // =========================
-            // CUVE (ex-produit)
-            // =========================
-            'cuve' => $this->whenLoaded('cuve', fn () => [
-                'id'      => $this->cuve->id,
-                'libelle' => $this->cuve->libelle,
-            ]),
+            // =================================================
+            // 🔹 CONTEXTE VENTE / AFFECTATION
+            // =================================================
+            'contexte' => $this->whenLoaded('affectation', function () {
 
-            // =========================
-            // STATION
-            // =========================
-            'station' => $this->whenLoaded('station', fn () => [
-                'id'      => $this->station->id,
-                'libelle' => $this->station->libelle,
-            ]),
+                return [
+                    // =============================================
+                    // 🔹 STATION
+                    // =============================================
+                    'station' => $this->affectation?->pompe?->station
+                        ? [
+                            'id'      => $this->affectation->pompe->station->id,
+                            'libelle' => $this->affectation->pompe->station->libelle,
+                          ]
+                        : null,
 
-            // =========================
-            // MÉTADONNÉES
-            // =========================
+                    // =============================================
+                    // 🔹 POMPE
+                    // =============================================
+                    'pompe' => $this->affectation?->pompe
+                        ? [
+                            'id'        => $this->affectation->pompe->id,
+                            'libelle'   => $this->affectation->pompe->libelle,
+                            'reference' => $this->affectation->pompe->reference,
+                          ]
+                        : null,
+
+                    // =============================================
+                    // 🔹 POMPISTE
+                    // =============================================
+                    'pompiste' => $this->affectation?->user
+                        ? [
+                            'id'        => $this->affectation->user->id,
+                            'name'      => $this->affectation->user->name,
+                            'email'     => $this->affectation->user->email,
+                            'telephone' => $this->affectation->user->telephone,
+                          ]
+                        : null,
+                ];
+            }),
+
+            // =================================================
+            // 🔹 AUDIT
+            // =================================================
+            'created_by' => $this->createdBy?->name,
+            'modify_by'  => $this->modifiedBy?->name,
+
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
         ];
