@@ -49,8 +49,7 @@ class VenteLitre extends Model
 
     /**
      * =================================================
-     * SCOPE LOCAL : VISIBILITÉ DES VENTES
-     * (100 % basé sur la STATION DE LA CUVE)
+     * SCOPE : VISIBILITÉ DES VENTES
      * =================================================
      */
     public function scopeVisible(Builder $query): Builder
@@ -61,12 +60,42 @@ class VenteLitre extends Model
             return $query->whereRaw('1 = 0');
         }
 
-        // 🔹 Super admin → tout voir
+        /**
+         * 🔥 SUPER ADMIN
+         * → toutes les ventes
+         */
         if ($user->role === 'super_admin') {
             return $query;
         }
 
-        // 🔹 Station via DERNIÈRE affectation active
+        /**
+         * 🔴 POMPISTE
+         * → ventes de TOUTES les stations
+         *   liées à SES affectations (actives ou non)
+         */
+        if ($user->role === 'pompiste') {
+
+            $stationIds = $user->affectations()
+                ->pluck('id_station')
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            if (empty($stationIds)) {
+                return $query->whereRaw('1 = 0');
+            }
+
+            return $query->whereHas('cuve', function ($q) use ($stationIds) {
+                $q->whereIn('id_station', $stationIds);
+            });
+        }
+
+        /**
+         * 🔵 ADMIN / 🟣 SUPERVISEUR / 🟡 GÉRANT
+         * → ventes de la station issue
+         *   de la DERNIÈRE affectation active
+         */
         $stationId = $user->affectations()
             ->where('status', true)
             ->latest('created_at')
@@ -76,7 +105,6 @@ class VenteLitre extends Model
             return $query->whereRaw('1 = 0');
         }
 
-        // 🔹 Filtrage par station de la cuve
         return $query->whereHas('cuve', function ($q) use ($stationId) {
             $q->where('id_station', $stationId);
         });
