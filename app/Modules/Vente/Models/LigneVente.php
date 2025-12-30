@@ -8,6 +8,8 @@ use App\Modules\Settings\Models\Station;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+
 
 class LigneVente extends Model
 {
@@ -161,4 +163,29 @@ class LigneVente extends Model
     {
         return $this->belongsTo(User::class, 'modify_by');
     }
+
+    /**
+ * =========================
+ * VALIDATION DE VENTE
+ * =========================
+ */
+public function validation()
+{
+    return $this->hasOne(
+        ValidationVente::class,
+        'id_vente'
+    );
+}
+/**
+ * =========================
+ * COMMENTAIRE DE VALIDATION
+ * =========================
+ */
+protected function validationCommentaire(): Attribute
+{
+    return Attribute::get(
+        fn () => $this->validation?->commentaire
+    );
+}
+
 }

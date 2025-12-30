@@ -14,9 +14,8 @@ class LigneVenteResource extends JsonResource
             'index_debut' => (float) $this->index_debut,
             'index_fin'   => (float) $this->index_fin,
             'qte_vendu'   => (float) $this->qte_vendu,
-           'status' => $this->status ? 'validée' : 'en cours',
-
-            'commentaire' => $this->commentaire,
+            'status'      => $this->status ? 'validée' : 'en cours',
+            'commentaire' => $this->validation_commentaire,
 
             // =================================================
             // 🔹 CONTEXTE VENTE / AFFECTATION
