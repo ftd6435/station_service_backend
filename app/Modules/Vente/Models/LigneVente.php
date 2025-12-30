@@ -1,11 +1,10 @@
 <?php
-
 namespace App\Modules\Vente\Models;
 
 use App\Modules\Administration\Models\User;
 use App\Modules\Settings\Models\Affectation;
 use App\Modules\Settings\Models\Station;
- // ✅ import manquant
+// ✅ import manquant
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -16,7 +15,7 @@ class LigneVente extends Model
 
     protected $fillable = [
         'id_station',
-        'id_cuve',          // ✅ clé métier
+        'id_cuve', // ✅ clé métier
         'id_affectation',
         'index_debut',
         'index_fin',
@@ -63,17 +62,17 @@ class LigneVente extends Model
         switch ($user->role) {
 
             /**
-             * 🔥 SUPER ADMIN
-             * → accès total
-             */
+                 * 🔥 SUPER ADMIN
+                 * → accès total
+                 */
             case 'super_admin':
                 return $query;
 
             /**
-             * 🔵 ADMIN / 🟣 SUPERVISEUR / 🟡 GÉRANT
-             * → ventes de la station issue
-             *   de la DERNIÈRE affectation active
-             */
+                 * 🔵 ADMIN / 🟣 SUPERVISEUR / 🟡 GÉRANT
+                 * → ventes de la station issue
+                 *   de la DERNIÈRE affectation active
+                 */
             case 'admin':
             case 'superviseur':
             case 'gerant':
@@ -90,26 +89,26 @@ class LigneVente extends Model
                 return $query->where('id_station', $stationId);
 
             /**
-             * 🔴 POMPISTE
-             * → uniquement ses ventes
-             *   via son AFFECTATION ACTIVE
-             */
+                 * 🔴 POMPISTE
+                 * → toutes ses ventes, via TOUTES ses affectations
+                 *   (actives ou non)
+                 */
             case 'pompiste':
 
-                $affectationId = $user->affectations()
-                    ->where('status', true)
-                    ->latest('created_at')
-                    ->value('id');
+                $affectationIds = $user->affectations()
+                    ->pluck('id')
+                    ->filter()
+                    ->values()
+                    ->all();
 
-                if (! $affectationId) {
+                if (empty($affectationIds)) {
                     return $query->whereRaw('1 = 0');
                 }
 
-                return $query->where('id_affectation', $affectationId);
-
+                return $query->whereIn('id_affectation', $affectationIds);
             /**
-             * ❌ AUTRES CAS
-             */
+                 * ❌ AUTRES CAS
+                 */
             default:
                 return $query->whereRaw('1 = 0');
         }
