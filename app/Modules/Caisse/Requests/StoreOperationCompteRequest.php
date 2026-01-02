@@ -19,7 +19,7 @@ class StoreOperationCompteRequest extends FormRequest
             'id_compte'         => ['required', 'exists:comptes,id'],
             'id_type_operation' => ['required', 'exists:type_operations,id'],
             'montant'           => ['required', 'numeric', 'gt:0'],
-            'reference'         => ['required', 'string', 'max:100'],
+            'reference'         => ['nullable', 'string', 'max:100'],
             'commentaire'       => ['nullable', 'string', 'max:255'],
         ];
     }
