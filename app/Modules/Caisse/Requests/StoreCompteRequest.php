@@ -18,7 +18,7 @@ class StoreCompteRequest extends FormRequest
         return [
             'id_station'    => ['required', 'exists:stations,id', 'unique:comptes,id_station'],
             'libelle'       => ['required', 'string', 'max:100'],
-            'numeroc'       => ['required', 'string', 'max:100'],
+            'numero'       => ['required', 'string', 'max:100'],
             'commentaire'   => ['nullable', 'string', 'max:255'],
             'solde_initial' => ['required', 'numeric', 'min:0'],
         ];
