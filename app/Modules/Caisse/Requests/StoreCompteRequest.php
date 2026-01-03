@@ -16,7 +16,7 @@ class StoreCompteRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'id_station'    => ['required', 'exists:stations,id', 'unique:comptes,id_station'],
+            'id_station'    => ['required', 'exists:stations,id'],
             'libelle'       => ['required', 'string', 'max:100'],
             'numero'       => ['required', 'string', 'max:100'],
             'commentaire'   => ['nullable', 'string', 'max:255'],
