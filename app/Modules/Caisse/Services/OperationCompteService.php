@@ -90,7 +90,7 @@ class OperationCompteService
             if ($type->nature === 2) {
                 return response()->json([
                     'status'  => 409,
-                    'message' => 'Utilisez le transfert inter-station.',
+                    'message' => 'Utilisez le transfert inter-station. en precisant la source et la destination',
                 ], 409);
             }
 
