@@ -21,7 +21,7 @@ Route::middleware(['station.db', 'auth:sanctum'])
         // =============================================
         Route::post(
             'operations/transfert',
-            [OperationCompteController::class, 'tracnsfer']
+            [OperationCompteController::class, 'transfer']
         );
 
         // =============================================
