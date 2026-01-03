@@ -1,15 +1,13 @@
 <?php
-
 namespace App\Modules\Caisse\Models;
 
 use App\Modules\Administration\Models\User;
 use App\Modules\Settings\Models\Station;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 
 class Compte extends Model
 {
@@ -105,22 +103,50 @@ class Compte extends Model
      */
     public function getSoldeActuelAttribute(): float
     {
-        $entrees = $this->operations()
-            ->where('status', 'effectif')
-            ->whereHas('typeOperation', fn ($q) => $q->where('nature', 1))
-            ->sum('montant');
+        $solde = (float) $this->solde_initial;
 
-        $sorties = $this->operations()
+        $operations = $this->operations()
             ->where('status', 'effectif')
-            ->whereHas('typeOperation', fn ($q) => $q->where('nature', 0))
-            ->sum('montant');
+            ->with('typeOperation')
+            ->get();
 
-        $transfertsSortants = $this->operations()
-            ->where('status', 'effectif')
-            ->whereHas('typeOperation', fn ($q) => $q->where('nature', 2))
-            ->sum('montant');
+        foreach ($operations as $op) {
 
-        return (float) ($this->solde_initial + $entrees - $sorties - $transfertsSortants);
+            $nature  = (int) $op->typeOperation->nature;
+            $montant = (float) $op->montant;
+
+            // =============================
+            // 🔹 ENTRÉE
+            // =============================
+            if ($nature === 1 && (int) $op->id_compte === (int) $this->id) {
+                $solde += $montant;
+            }
+
+            // =============================
+            // 🔹 SORTIE
+            // =============================
+            if ($nature === 0 && (int) $op->id_compte === (int) $this->id) {
+                $solde -= $montant;
+            }
+
+            // =============================
+            // 🔹 TRANSFERT (UNE SEULE LIGNE)
+            // =============================
+            if ($nature === 2) {
+
+                // source
+                if ((int) $op->id_source === (int) $this->id) {
+                    $solde -= $montant;
+                }
+
+                // destination
+                if ((int) $op->id_destination === (int) $this->id) {
+                    $solde += $montant;
+                }
+            }
+        }
+
+        return round($solde, 2);
     }
 
     /**
