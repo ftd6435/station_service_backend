@@ -284,44 +284,90 @@ class OperationCompteService
 }
 
 
+    // public function confirm(string $reference)
+    // {
+    //     DB::beginTransaction();
+
+    //     try {
+
+    //         $operations = OperationCompte::where('reference', $reference)
+    //             ->lockForUpdate()
+    //             ->get();
+
+    //         if ($operations->count() !== 2) {
+    //             return response()->json([
+    //                 'status'  => 404,
+    //                 'message' => 'Transfert introuvable.',
+    //             ], 404);
+    //         }
+
+    //         foreach ($operations as $op) {
+    //             $op->update(['status' => 'effectif']);
+    //         }
+
+    //         DB::commit();
+
+    //         return response()->json([
+    //             'status'  => 200,
+    //             'message' => 'Transfert confirmé.',
+    //         ], 200);
+
+    //     } catch (Throwable $e) {
+
+    //         DB::rollBack();
+
+    //         return response()->json([
+    //             'status'  => 500,
+    //             'message' => 'Erreur lors de la confirmation.',
+    //         ], 500);
+    //     }
+    // }
     public function confirm(string $reference)
-    {
-        DB::beginTransaction();
+{
+    DB::beginTransaction();
 
-        try {
+    try {
 
-            $operations = OperationCompte::where('reference', $reference)
-                ->lockForUpdate()
-                ->get();
+        $op = OperationCompte::lockForUpdate()
+            ->where('reference', $reference)
+            ->where('status', 'en_attente')
+            ->first();
 
-            if ($operations->count() !== 2) {
-                return response()->json([
-                    'status'  => 404,
-                    'message' => 'Transfert introuvable.',
-                ], 404);
-            }
-
-            foreach ($operations as $op) {
-                $op->update(['status' => 'effectif']);
-            }
-
-            DB::commit();
-
+        if (! $op) {
             return response()->json([
-                'status'  => 200,
-                'message' => 'Transfert confirmé.',
-            ], 200);
-
-        } catch (Throwable $e) {
-
-            DB::rollBack();
-
-            return response()->json([
-                'status'  => 500,
-                'message' => 'Erreur lors de la confirmation.',
-            ], 500);
+                'status'  => 404,
+                'message' => 'Transfert introuvable ou déjà traité.',
+            ], 404);
         }
+
+        // dernier contrôle solde
+        if ($op->montant > $op->source->solde_actuel) {
+            return response()->json([
+                'status'  => 409,
+                'message' => 'Solde insuffisant au moment de la confirmation.',
+            ], 409);
+        }
+
+        $op->update(['status' => 'effectif']);
+
+        DB::commit();
+
+        return response()->json([
+            'status'  => 200,
+            'message' => 'Transfert confirmé avec succès.',
+        ]);
+
+    } catch (\Throwable $e) {
+
+        DB::rollBack();
+
+        return response()->json([
+            'status'  => 500,
+            'message' => 'Erreur lors de la confirmation.',
+        ], 500);
     }
+}
+
 
     public function cancel(string $reference)
     {
