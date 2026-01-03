@@ -1,5 +1,4 @@
 <?php
-
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -16,32 +15,28 @@ return new class extends Migration
             // =============================================
             $table->foreignId('id_station')
                 ->constrained('stations')
-                ->onDelete('cascade');
-             $table->string('numero', 50)->unique();
+                ->cascadeOnDelete();
+
+            $table->string('numero', 50);
             $table->string('libelle', 100)->nullable();
             $table->string('commentaire', 255)->nullable();
 
             $table->decimal('solde_initial', 15, 2)->default(0);
 
             // =============================================
-            // 🔹 AUDIT (CASCADE)
+            // 🔹 AUDIT
             // =============================================
             $table->foreignId('created_by')
                 ->nullable()
                 ->constrained('users')
-                ->onDelete('cascade');
+                ->nullOnDelete();
 
             $table->foreignId('modify_by')
                 ->nullable()
                 ->constrained('users')
-                ->onDelete('cascade');
+                ->nullOnDelete();
 
             $table->timestamps();
-
-            // =============================================
-            // 🔹 CONTRAINTE MÉTIER
-            // =============================================
-            $table->unique('id_station'); // 1 compte par station
         });
     }
 
