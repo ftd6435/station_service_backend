@@ -16,9 +16,7 @@ class SetStationDatabase
     public function handle(Request $request, Closure $next): Response
     {
         /**
-         * =====================================================
-         * 🔹 1. Code station / client (HEADER)
-         * =====================================================
+         * 🔹 1. Code station / client
          */
         $stationCode = $request->header('code');
 
@@ -30,9 +28,7 @@ class SetStationDatabase
         }
 
         /**
-         * =====================================================
          * 🔹 2. Client (BASE MASTER)
-         * =====================================================
          */
         $client = Client::where('code', $stationCode)->first();
 
@@ -58,9 +54,7 @@ class SetStationDatabase
         }
 
         /**
-         * =====================================================
-         * 🔹 3. Licence (via client_id)
-         * =====================================================
+         * 🔹 3. Licence
          */
         $licence = Licence::where('client_id', $client->id)->first();
 
@@ -72,61 +66,46 @@ class SetStationDatabase
         }
 
         /**
-         * =====================================================
-         * 🔹 4. Vérification dates licence
-         * =====================================================
+         * 🔹 4. Calcul jours licence (SAFE)
          */
         $now = Carbon::now();
 
         if ($now->lt($licence->date_achat)) {
-            $request->merge(['_licence_jours_restants' => null]);
-
+            $joursRestants = null;
         } elseif ($now->gt($licence->date_expiration)) {
-
-            $joursExp = $now->diffInDays($licence->date_expiration);
-            $request->merge(['_licence_jours_restants' => -$joursExp]);
+            $joursDepassement = $now->diffInDays($licence->date_expiration);
 
             return response()->json([
                 'status'  => 'error',
                 'message' => 'Licence expirée.',
-                'jours_depassement' => $joursExp,
+                'jours_depassement' => $joursDepassement,
             ], 403);
-
         } else {
             $joursRestants = $now->diffInDays($licence->date_expiration);
-            $request->merge(['_licence_jours_restants' => $joursRestants]);
         }
 
         /**
-         * =====================================================
-         * 🔹 5. Switch DB CLIENT (TENANT)
-         * =====================================================
+         * 🔹 5. Injection hors body (CORRECT)
+         */
+        $request->attributes->set('licence_jours_restants', $joursRestants);
+        $request->attributes->set('tenant_db', $client->database);
+        $request->attributes->set('client', $client);
+
+        /**
+         * 🔹 6. Switch DB TENANT
          */
         try {
-
-            $request->merge(['db_name' => $client->database]);
-
-            // On garde mysql par défaut, comme dans ton autre projet
             Config::set('database.connections.mysql.database', $client->database);
 
             DB::purge('mysql');
             DB::reconnect('mysql');
-
-        } catch (\Exception $e) {
-
+        } catch (\Throwable $e) {
             return response()->json([
                 'status'  => 'error',
                 'message' => 'Impossible de se connecter à la base de données de la station.',
                 'error'   => $e->getMessage(),
             ], 500);
         }
-
-        /**
-         * =====================================================
-         * 🔹 6. Partage du client courant
-         * =====================================================
-         */
-        $request->attributes->set('client', $client);
 
         return $next($request);
     }
