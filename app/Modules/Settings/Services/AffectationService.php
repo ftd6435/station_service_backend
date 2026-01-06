@@ -69,6 +69,31 @@ public function store(array $data)
 
         /**
          * =================================================
+         * 1.b COHÉRENCE STATION USER / AFFECTATION
+         * =================================================
+         * - Si l'utilisateur a déjà une station → elle doit être identique
+         * - Sinon → on l’aligne automatiquement
+         */
+        if (! empty($user->id_station)) {
+
+            if ((int) $user->id_station !== (int) $data['id_station']) {
+                DB::rollBack();
+
+                return response()->json([
+                    'status'  => 422,
+                    'message' => 'Incohérence de station : cet utilisateur appartient déjà à une autre station.',
+                ]);
+            }
+
+        } else {
+
+            $user->update([
+                'id_station' => $data['id_station'],
+            ]);
+        }
+
+        /**
+         * =================================================
          * 2. UN UTILISATEUR = UNE SEULE AFFECTATION ACTIVE
          * =================================================
          */
@@ -157,23 +182,8 @@ public function store(array $data)
 
             $pompe = Pompe::findOrFail($data['id_pompe']);
 
-            $cuve = Cuve::where('id_station', $data['id_station'])
-                ->where('type_cuve', $pompe->type_pompe)
-                ->where('status', true)
-                ->first();
-
-            if (! $cuve) {
-                DB::rollBack();
-
-                return response()->json([
-                    'status'  => 404,
-                    'message' => "Aucune cuve '{$pompe->type_pompe}' trouvée pour cette station.",
-                ]);
-            }
-
             LigneVente::create([
                 'id_station'     => $data['id_station'],
-                'id_cuve'        => $cuve->id,
                 'id_affectation' => $affectation->id,
                 'index_debut'    => $data['index_debut'],
                 'status'         => false,
