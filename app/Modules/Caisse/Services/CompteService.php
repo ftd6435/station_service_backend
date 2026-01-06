@@ -8,21 +8,12 @@ use Throwable;
 
 class CompteService
 {
-    /**
-     * =================================================
-     * 🔹 LISTE DES COMPTES
-     * =================================================
-     */
     public function getAll()
     {
         try {
 
             $comptes = Compte::visible()
-                ->with([
-                    'station.affectations.user', // 🔥 nécessaire pour dernier_gerant
-                    'createdBy',
-                    'modifiedBy',
-                ])
+                ->with(['station', 'createdBy', 'modifiedBy'])
                 ->get();
 
             return response()->json([
@@ -39,21 +30,12 @@ class CompteService
         }
     }
 
-    /**
-     * =================================================
-     * 🔹 DÉTAIL D’UN COMPTE
-     * =================================================
-     */
     public function getOne(int $id)
     {
         try {
 
             $compte = Compte::visible()
-                ->with([
-                    'station.affectations.user', // 🔥 nécessaire pour dernier_gerant
-                    'createdBy',
-                    'modifiedBy',
-                ])
+                ->with(['station', 'createdBy', 'modifiedBy'])
                 ->findOrFail($id);
 
             return response()->json([
@@ -70,11 +52,6 @@ class CompteService
         }
     }
 
-    /**
-     * =================================================
-     * 🔹 CRÉATION
-     * =================================================
-     */
     public function store(array $data)
     {
         try {
@@ -85,10 +62,7 @@ class CompteService
                 'status'  => 201,
                 'message' => 'Compte créé avec succès.',
                 'data'    => new CompteResource(
-                    $compte->load([
-                        'station.affectations.user', // 🔥
-                        'createdBy',
-                    ])
+                    $compte->load(['station', 'createdBy'])
                 ),
             ], 201);
 
@@ -101,11 +75,6 @@ class CompteService
         }
     }
 
-    /**
-     * =================================================
-     * 🔹 MISE À JOUR
-     * =================================================
-     */
     public function update(int $id, array $data)
     {
         try {
@@ -117,11 +86,7 @@ class CompteService
                 'status'  => 200,
                 'message' => 'Compte mis à jour.',
                 'data'    => new CompteResource(
-                    $compte->fresh()->load([
-                        'station.affectations.user', // 🔥
-                        'createdBy',
-                        'modifiedBy',
-                    ])
+                    $compte->fresh()->load(['station', 'createdBy', 'modifiedBy'])
                 ),
             ], 200);
 
@@ -134,11 +99,6 @@ class CompteService
         }
     }
 
-    /**
-     * =================================================
-     * 🔹 SUPPRESSION
-     * =================================================
-     */
     public function delete(int $id)
     {
         try {

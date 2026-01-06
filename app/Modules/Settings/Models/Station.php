@@ -161,4 +161,4 @@ class Station extends Model
         return $this->hasMany(Affectation::class, 'id_station')
             ->orderBy('created_at', 'desc');
     }
-}s
+}
