@@ -10,18 +10,36 @@ class CompteResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id'             => $this->id,
-            'libelle'        => $this->libelle,
-             'numero'        => $this->numero,
-            'commentaire'    => $this->commentaire,
+            'id'          => $this->id,
+            'libelle'     => $this->libelle,
+            'numero'      => $this->numero,
+            'commentaire' => $this->commentaire,
 
             // =============================================
-            // 🔹 STATION
+            // 🔹 STATION + DERNIER GÉRANT
             // =============================================
             'station' => $this->whenLoaded('station', function () {
+
+                $gerant = null;
+
+                if ($this->station->relationLoaded('affectations')) {
+                    $gerant = $this->station->affectations
+                        ->filter(fn ($a) => $a->user && $a->user->role === 'gerant')
+                        ->sortByDesc('created_at')
+                        ->first()?->user;
+                }
+
                 return [
                     'id'      => $this->station->id,
                     'libelle' => $this->station->libelle,
+
+                    // 🔹 Dernier gérant de la station
+                    'dernier_gerant' => $gerant ? [
+                        'name'      => $gerant->name,
+                        'email'     => $gerant->email,
+                        'telephone' => $gerant->telephone,
+                        'adresse'   => $gerant->adresse,
+                    ] : null,
                 ];
             }),
 
