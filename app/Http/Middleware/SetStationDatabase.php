@@ -75,11 +75,6 @@ class SetStationDatabase
         } elseif ($now->gt($licence->date_expiration)) {
             $joursDepassement = $now->diffInDays($licence->date_expiration);
 
-            return response()->json([
-                'status'  => 'error',
-                'message' => 'Licence expirée.',
-                'jours_depassement' => $joursDepassement,
-            ], 403);
         } else {
             $joursRestants = $now->diffInDays($licence->date_expiration);
         }
