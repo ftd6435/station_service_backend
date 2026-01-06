@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Modules\Administration\Models;
 
 use App\Modules\Settings\Models\Affectation;
@@ -53,15 +54,15 @@ class User extends Authenticatable
      */
     protected static function booted(): void
     {
-        static::creating(function ($m) {
+        static::creating(function ($model) {
             if (Auth::check()) {
-                $m->created_by = Auth::id();
+                $model->created_by = Auth::id();
             }
         });
 
-        static::updating(function ($m) {
+        static::updating(function ($model) {
             if (Auth::check()) {
-                $m->modify_by = Auth::id();
+                $model->modify_by = Auth::id();
             }
         });
     }
@@ -82,28 +83,24 @@ class User extends Authenticatable
         switch ($auth->role) {
 
             /**
-                 * 🔥 SUPER ADMIN
-                 * → voit tout
-                 */
+             * 🔥 SUPER ADMIN
+             * → voit tout
+             */
             case 'super_admin':
                 return $query;
 
             /**
-                 * 🔵 ADMIN
-                 * 🟡 GÉRANT
-                 * 🟣 SUPERVISEUR
-                 * → users de la station :
-                 *   - créés avec users.id_station
-                 *   - OU affectés à la station
-                 */
+             * 🔵 ADMIN
+             * 🟡 GÉRANT
+             * 🟣 SUPERVISEUR
+             * → utilisateurs liés à la station
+             */
             case 'admin':
             case 'gerant':
             case 'superviseur':
 
-                $stationId = $auth->id_station ?? $auth->affectations()
-                    ->where('status', true)
-                    ->latest('created_at')
-                    ->value('id_station');
+                $stationId = $auth->id_station
+                    ?? optional($auth->activeAffectation())->id_station;
 
                 if (! $stationId) {
                     return $query->whereRaw('1 = 0');
@@ -111,10 +108,10 @@ class User extends Authenticatable
 
                 return $query->where(function (Builder $q) use ($stationId) {
 
-                    // Users créés pour la station
+                    // Utilisateurs créés pour la station
                     $q->where('id_station', $stationId)
 
-                    // OU users affectés à la station
+                        // OU utilisateurs affectés à la station
                         ->orWhereHas('affectations', function (Builder $qa) use ($stationId) {
                             $qa->where('id_station', $stationId)
                                 ->where('status', true);
@@ -122,17 +119,13 @@ class User extends Authenticatable
                 });
 
             /**
-                 * 🔴 POMPISTE
-                 * → users de la même pompe
-                 * → sinon users de la station
-                 * → uniquement via affectation
-                 */
+             * 🔴 POMPISTE
+             * → même pompe si possible
+             * → sinon même station
+             */
             case 'pompiste':
 
-                $affectation = $auth->affectations()
-                    ->where('status', true)
-                    ->latest('created_at')
-                    ->first();
+                $affectation = $auth->activeAffectation();
 
                 if (! $affectation) {
                     return $query->whereRaw('1 = 0');
@@ -157,8 +150,8 @@ class User extends Authenticatable
                 return $query->whereRaw('1 = 0');
 
             /**
-                 * ❌ AUTRES CAS
-                 */
+             * ❌ AUTRES CAS
+             */
             default:
                 return $query->whereRaw('1 = 0');
         }
@@ -166,23 +159,7 @@ class User extends Authenticatable
 
     /**
      * =================================================
-     * RELATIONS
-     * =================================================
-     */
-
-    /**
-     * Affectations de l'utilisateur
-     */
-    public function affectations()
-    {
-        return $this->hasMany(Affectation::class, 'id_user')
-            ->orderBy('created_at', 'desc');
-    }
-
-    /**
-     * =================================================
      * SCOPE : POMPISTES DISPONIBLES
-     * → pompistes sans affectation active
      * =================================================
      */
     public function scopePompistesDisponibles(Builder $query): Builder
@@ -192,6 +169,38 @@ class User extends Authenticatable
             ->whereDoesntHave('affectations', function (Builder $q) {
                 $q->where('status', true);
             });
+    }
+
+    /**
+     * =================================================
+     * MÉTHODES MÉTIER
+     * =================================================
+     */
+
+    /**
+     * Affectation active de l'utilisateur
+     */
+    public function activeAffectation(): ?Affectation
+    {
+        return $this->affectations()
+            ->where('status', true)
+            ->latest('created_at')
+            ->first();
+    }
+
+    /**
+     * =================================================
+     * RELATIONS
+     * =================================================
+     */
+
+    /**
+     * Affectations
+     */
+    public function affectations()
+    {
+        return $this->hasMany(Affectation::class, 'id_user')
+            ->orderBy('created_at', 'desc');
     }
 
     /**

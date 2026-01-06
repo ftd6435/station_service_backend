@@ -61,28 +61,43 @@ class SetStationDatabase
         if (! $licence) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'Aucune licence active trouvée pour cette station.',
+                'message' => 'Aucune licence trouvée pour cette station.',
             ], 403);
         }
 
         /**
-         * 🔹 4. Calcul jours licence (SAFE)
+         * 🔹 4. Calcul licence (NE BLOQUE PAS)
          */
         $now = Carbon::now();
 
+        $joursRestants     = null;
+        $joursDepassement  = null;
+        $licenceExpiree    = false;
+
         if ($now->lt($licence->date_achat)) {
+
+            // Licence pas encore commencée
             $joursRestants = null;
+
         } elseif ($now->gt($licence->date_expiration)) {
+
+            // Licence expirée
             $joursDepassement = $now->diffInDays($licence->date_expiration);
+            $licenceExpiree   = true;
 
         } else {
+
+            // Licence valide
             $joursRestants = $now->diffInDays($licence->date_expiration);
         }
 
         /**
-         * 🔹 5. Injection hors body (CORRECT)
+         * 🔹 5. Injection CONTEXTE (hors body)
          */
         $request->attributes->set('licence_jours_restants', $joursRestants);
+        $request->attributes->set('licence_jours_depassement', $joursDepassement);
+        $request->attributes->set('licence_expiree', $licenceExpiree);
+
         $request->attributes->set('tenant_db', $client->database);
         $request->attributes->set('client', $client);
 
