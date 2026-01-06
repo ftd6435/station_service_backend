@@ -13,7 +13,7 @@ class CompteService
         try {
 
             $comptes = Compte::visible()
-                ->with(['station', 'createdBy', 'modifiedBy'])
+                ->with(['station.affectations.user', 'createdBy', 'modifiedBy'])
                 ->get();
 
             return response()->json([
