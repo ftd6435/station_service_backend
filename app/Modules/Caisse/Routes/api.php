@@ -23,6 +23,10 @@ Route::middleware(['station.db', 'auth:sanctum'])
             'operations/transfert',
             [OperationCompteController::class, 'transfer']
         );
+          Route::get(
+            'transfert',
+            [OperationCompteController::class, 'listeTransfet']
+        );
 
         // =============================================
         // CONFIRMATION TRANSFERT

@@ -21,6 +21,10 @@ class OperationCompteController extends Controller
     {
         return $this->service->getAll();
     }
+     public function listeTransfet()
+    {
+        return $this->service->getAll1();
+    }
 
     /**
      * DÉTAIL

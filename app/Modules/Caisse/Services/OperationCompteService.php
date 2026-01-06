@@ -1,11 +1,11 @@
 <?php
-
 namespace App\Modules\Caisse\Services;
 
 use App\Modules\Caisse\Models\Compte;
 use App\Modules\Caisse\Models\OperationCompte;
 use App\Modules\Caisse\Models\TypeOperation;
 use App\Modules\Caisse\Resources\OperationCompteResource;
+use App\Modules\Caisse\Resources\OperationTransfertResource;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -36,6 +36,36 @@ class OperationCompteService
             return response()->json([
                 'status'  => 500,
                 'message' => 'Erreur lors de la récupération des opérations.',
+            ], 500);
+        }
+    }
+
+    public function getAll1()
+    {
+        try {
+
+            $operations = OperationCompte::visible()
+                ->whereHas('typeOperation', fn($q) => $q->where('nature', 2))
+                ->with([
+                    'typeOperation',
+                    'source.station',
+                    'destination.station',
+                    'createdBy',
+                    'modifiedBy',
+                ])
+                ->orderByDesc('created_at')
+                ->get();
+
+            return response()->json([
+                'status' => 200,
+                'data'   => OperationTransfertResource::collection($operations),
+            ], 200);
+
+        } catch (Throwable $e) {
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors de la récupération des transferts.',
             ], 500);
         }
     }
@@ -212,77 +242,76 @@ class OperationCompteService
     // }
 
     public function transfer(array $data)
-{
-    DB::beginTransaction();
+    {
+        DB::beginTransaction();
 
-    try {
+        try {
 
-        $source = Compte::lockForUpdate()->find($data['id_source']);
-        $destination = Compte::lockForUpdate()->find($data['id_destination']);
+            $source      = Compte::lockForUpdate()->find($data['id_source']);
+            $destination = Compte::lockForUpdate()->find($data['id_destination']);
 
-        if (! $source || ! $destination) {
+            if (! $source || ! $destination) {
+                return response()->json([
+                    'status'  => 404,
+                    'message' => 'Compte source ou destination introuvable.',
+                ], 404);
+            }
+
+            if ($source->id === $destination->id) {
+                return response()->json([
+                    'status'  => 409,
+                    'message' => 'Un transfert vers le même compte est interdit.',
+                ], 409);
+            }
+
+            $montant = (float) $data['montant'];
+
+            if ($montant <= 0) {
+                return response()->json([
+                    'status'  => 409,
+                    'message' => 'Montant invalide.',
+                ], 409);
+            }
+
+            // 🔒 contrôle SOLDE AVANT transfert
+            if ($montant > $source->solde_actuel) {
+                return response()->json([
+                    'status'  => 409,
+                    'message' => 'Solde insuffisant sur le compte source.',
+                ], 409);
+            }
+
+            $type = TypeOperation::where('nature', 2)->firstOrFail();
+
+            $operation = OperationCompte::create([
+                'id_compte'         => $source->id,
+                'id_source'         => $source->id,
+                'id_destination'    => $destination->id,
+                'id_type_operation' => $type->id,
+                'montant'           => $montant,
+                'commentaire'       => $data['commentaire'] ?? null,
+                'status'            => 'en_attente',
+                // reference générée automatiquement par le model
+            ]);
+
+            DB::commit();
+
             return response()->json([
-                'status'  => 404,
-                'message' => 'Compte source ou destination introuvable.',
-            ], 404);
-        }
+                'status'    => 201,
+                'message'   => 'Transfert envoyé et en attente de confirmation.',
+                'reference' => $operation->reference,
+            ], 201);
 
-        if ($source->id === $destination->id) {
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
             return response()->json([
-                'status'  => 409,
-                'message' => 'Un transfert vers le même compte est interdit.',
-            ], 409);
+                'status'  => 500,
+                'message' => 'Erreur lors du transfert.',
+            ], 500);
         }
-
-        $montant = (float) $data['montant'];
-
-        if ($montant <= 0) {
-            return response()->json([
-                'status'  => 409,
-                'message' => 'Montant invalide.',
-            ], 409);
-        }
-
-        // 🔒 contrôle SOLDE AVANT transfert
-        if ($montant > $source->solde_actuel) {
-            return response()->json([
-                'status'  => 409,
-                'message' => 'Solde insuffisant sur le compte source.',
-            ], 409);
-        }
-
-        $type = TypeOperation::where('nature', 2)->firstOrFail();
-
-        $operation = OperationCompte::create([
-            'id_compte'         => $source->id,
-            'id_source'         => $source->id,
-            'id_destination'    => $destination->id,
-            'id_type_operation' => $type->id,
-            'montant'           => $montant,
-            'commentaire'       => $data['commentaire'] ?? null,
-            'status'            => 'en_attente',
-            // reference générée automatiquement par le model
-        ]);
-
-        DB::commit();
-
-        return response()->json([
-            'status'    => 201,
-            'message'   => 'Transfert envoyé et en attente de confirmation.',
-            'reference' => $operation->reference,
-        ], 201);
-
-    } catch (\Throwable $e) {
-
-        DB::rollBack();
-
-        return response()->json([
-            'status'  => 500,
-            'message' => 'Erreur lors du transfert.',
-        ], 500);
     }
-}
-
 
     // public function confirm(string $reference)
     // {
@@ -323,51 +352,50 @@ class OperationCompteService
     //     }
     // }
     public function confirm(string $reference)
-{
-    DB::beginTransaction();
+    {
+        DB::beginTransaction();
 
-    try {
+        try {
 
-        $op = OperationCompte::lockForUpdate()
-            ->where('reference', $reference)
-            ->where('status', 'en_attente')
-            ->first();
+            $op = OperationCompte::lockForUpdate()
+                ->where('reference', $reference)
+                ->where('status', 'en_attente')
+                ->first();
 
-        if (! $op) {
+            if (! $op) {
+                return response()->json([
+                    'status'  => 404,
+                    'message' => 'Transfert introuvable ou déjà traité.',
+                ], 404);
+            }
+
+            // dernier contrôle solde
+            if ($op->montant > $op->source->solde_actuel) {
+                return response()->json([
+                    'status'  => 409,
+                    'message' => 'Solde insuffisant au moment de la confirmation.',
+                ], 409);
+            }
+
+            $op->update(['status' => 'effectif']);
+
+            DB::commit();
+
             return response()->json([
-                'status'  => 404,
-                'message' => 'Transfert introuvable ou déjà traité.',
-            ], 404);
-        }
+                'status'  => 200,
+                'message' => 'Transfert confirmé avec succès.',
+            ]);
 
-        // dernier contrôle solde
-        if ($op->montant > $op->source->solde_actuel) {
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
             return response()->json([
-                'status'  => 409,
-                'message' => 'Solde insuffisant au moment de la confirmation.',
-            ], 409);
+                'status'  => 500,
+                'message' => 'Erreur lors de la confirmation.',
+            ], 500);
         }
-
-        $op->update(['status' => 'effectif']);
-
-        DB::commit();
-
-        return response()->json([
-            'status'  => 200,
-            'message' => 'Transfert confirmé avec succès.',
-        ]);
-
-    } catch (\Throwable $e) {
-
-        DB::rollBack();
-
-        return response()->json([
-            'status'  => 500,
-            'message' => 'Erreur lors de la confirmation.',
-        ], 500);
     }
-}
-
 
     public function cancel(string $reference)
     {
