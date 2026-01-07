@@ -3,13 +3,30 @@ namespace App\Modules\Administration\Services;
 
 use App\Modules\Administration\Models\User;
 use App\Modules\Administration\Resources\UserResource;
+use App\Notifications\Channels\NimbaSmsService;
 use App\Traits\ImageUpload;
-use Exception;
+
 use Illuminate\Support\Facades\Hash;
+  use Illuminate\Http\Request;
+  use Illuminate\Support\Facades\Log;
+use Exception;
+
 
 class UserService
 {
     use ImageUpload;
+
+
+  
+
+public function getCompanyCode(): ?string
+{
+    $request = app(Request::class);
+
+    $code = $request->header('code');
+
+    return $code ?: null;
+}
 
     /**
      * ============================
@@ -77,42 +94,133 @@ class UserService
      * Création utilisateur
      * ============================
      */
-    public function store(array $data)
-    {
-        try {
+    // public function store(array $data)
+    // {
+    //     try {
 
-            // 🔹 Upload image si présente
-            if (! empty($data['image'])) {
-                $data['image'] = $this->imageUpload($data['image'], 'users');
-            }
+    //         // 🔹 Upload image si présente
+    //         if (! empty($data['image'])) {
+    //             $data['image'] = $this->imageUpload($data['image'], 'users');
+    //         }
 
-            // 🔹 Mot de passe
-            // - si fourni → hash
-            // - sinon → mot de passe par défaut "123456"
-            if (! empty($data['password'])) {
-                $data['password'] = Hash::make($data['password']);
-            } else {
-                $data['password'] = Hash::make('123456');
-            }
+    //         // 🔹 Mot de passe
+    //         // - si fourni → hash
+    //         // - sinon → mot de passe par défaut "123456"
+    //         if (! empty($data['password'])) {
+    //             $data['password'] = Hash::make($data['password']);
+    //         } else {
+    //             $data['password'] = Hash::make('123456');
+    //         }
 
-            $user = User::create($data);
-            $user->load(['station', 'createdBy', 'modifiedBy']);
+    //         $user = User::create($data);
+    //         $user->load(['station', 'createdBy', 'modifiedBy']);
 
-            return response()->json([
-                'status'  => 200,
-                'message' => 'Utilisateur créé avec succès.',
-                'data'    => new UserResource($user),
-            ]);
+    //         return response()->json([
+    //             'status'  => 200,
+    //             'message' => 'Utilisateur créé avec succès.',
+    //             'data'    => new UserResource($user),
+    //         ]);
 
-        } catch (Exception $e) {
+    //     } catch (Exception $e) {
 
-            return response()->json([
-                'status'  => 500,
-                'message' => 'Erreur lors de la création de l’utilisateur.',
-                'error'   => $e->getMessage(),
-            ]);
+    //         return response()->json([
+    //             'status'  => 500,
+    //             'message' => 'Erreur lors de la création de l’utilisateur.',
+    //             'error'   => $e->getMessage(),
+    //         ]);
+    //     }
+    // }
+ 
+
+public function store(array $data)
+{
+    try {
+
+        // =================================================
+        // 🔹 Upload image si présente
+        // =================================================
+        if (! empty($data['image'])) {
+            $data['image'] = $this->imageUpload($data['image'], 'users');
         }
+
+        // =================================================
+        // 🔹 Mot de passe
+        // =================================================
+        $plainPassword   = $data['password'] ?? '123456';
+        $data['password'] = Hash::make($plainPassword);
+
+        // =================================================
+        // 🔹 Création utilisateur
+        // =================================================
+        $user = User::create($data);
+
+        // Charger relations utiles
+        $user->load(['station', 'createdBy', 'modifiedBy']);
+
+        // =================================================
+        // 🔹 Récupération code entreprise (HEADER code)
+        // =================================================
+        $companyCode = $this->getCompanyCode();
+
+        // =================================================
+        // 🔹 Préparation SMS
+        // =================================================
+        $smsEnvoye = false;
+
+        if (! empty($user->telephone)) {
+
+            $stationName = $user->station?->libelle ?? 'votre station';
+
+            $message =
+                "Bienvenue {$user->name}.\n"
+                ."Votre compte a été créé avec succès.\n"
+                ."Entreprise : {$companyCode}\n"
+                ."Station : {$stationName}\n"
+                ."Téléphone : {$user->telephone}\n"
+                ."Mot de passe : {$plainPassword}";
+
+            // =================================================
+            // 🔹 Envoi SMS (NON BLOQUANT)
+            // =================================================
+            try {
+
+                $nimbaSms    = app(NimbaSmsService::class);
+                $smsResponse = $nimbaSms->sendOtp($user->telephone, $message);
+
+                if ($smsResponse instanceof \Illuminate\Http\JsonResponse) {
+                    $responseData = $smsResponse->getData(true);
+
+                   
+                }
+
+            } catch (\Throwable $e) {
+
+                Log::warning(
+                    "Échec de l’envoi du SMS à {$user->telephone} : " . $e->getMessage()
+                );
+            }
+        }
+
+        // =================================================
+        // 🔹 Réponse API
+        // =================================================
+        return response()->json([
+            'status'  => 200,
+            'message' => 'Utilisateur créé avec succès.',
+            'sms'     => $smsEnvoye ? 'envoyé' : 'non envoyé',
+            'data'    => new UserResource($user),
+        ], 200);
+
+    } catch (Exception $e) {
+
+        return response()->json([
+            'status'  => 500,
+            'message' => 'Erreur lors de la création de l’utilisateur.',
+            'error'   => $e->getMessage(),
+        ], 500);
     }
+}
+
 
     /**
      * ============================
