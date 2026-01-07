@@ -133,10 +133,10 @@ public function store(array $data)
             // ✅ LOGIQUE SÉCURISÉE (celle que tu veux)
             $stationName = 'votre station';
 
-            if (! empty($data['id_station'])) {
-                $stationName = Station::where('id', $data['id_station'])
-                    ->value('libelle') ?? 'votre station';
-            }
+            // if (! empty($data['id_station'])) {
+            //     $stationName = Station::where('id', $data['id_station'])
+            //         ->value('libelle') ?? 'votre station';
+            // }
 
             $message =
                 "Bienvenue {$user->name}.\n"
