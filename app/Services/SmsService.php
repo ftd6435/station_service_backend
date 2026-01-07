@@ -3,59 +3,52 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
+use Exception;
 
 class SmsService
 {
-    protected $basicToken;
-    protected $senderName;
-    protected $url;
+    protected string $serviceId;
+    protected string $secretToken;
+    protected string $basicToken;
+    protected string $sender;
+    protected string $url;
 
     public function __construct()
     {
-        $this->basicToken = config('services.nimba.basic_token');
-        $this->senderName = config('services.nimba.sender');
-        $this->url = config('services.nimba.url');
+        $this->serviceId   = config('services.nimba.service_id');
+        $this->secretToken = config('services.nimba.secret');
+        $this->basicToken  = config('services.nimba.basic_token');
+        $this->sender      = config('services.nimba.sender');
+        $this->url         = config('services.nimba.url');
+
+        if (! $this->serviceId || ! $this->secretToken || ! $this->basicToken || ! $this->sender || ! $this->url) {
+            throw new Exception('Nimba SMS configuration is incomplete.');
+        }
+
+        if (strlen($this->sender) > 11) {
+            throw new Exception('Sender name must not exceed 11 characters.');
+        }
     }
 
-    public function sendMessage(string $phone, string $message)
+    public function sendMessage(string $phone, string $message): array
     {
+        /** @var Response $response */
         $response = Http::withHeaders([
             'Authorization' => 'Basic ' . $this->basicToken,
             'Accept'        => 'application/json',
-            'Content-Type' => 'application/json',
         ])->post($this->url, [
-            'sender_name' => $this->senderName,
+            'sender_name' => $this->sender,
             'to' => [$phone],
             'message' => $message,
         ]);
 
-        // if ($response->status() != 201) {
-        //     throw new \Exception("Erreur d'envoi du message: " . json_encode($response->json()));
-        // }
+        if (! $response->successful()) {
+            throw new Exception(
+                "Failed to send SMS (HTTP {$response->status()}): " .
+                    json_encode($response->json())
+            );
+        }
 
-        // return $response->json();
-        return true;
-    }
-
-    public function sendMessageToMany(array $phones, string $message)
-    {
-        $recipients = array_filter(array_unique($phones));
-
-        $response = Http::withHeaders([
-            'Authorization' => 'Basic ' . $this->basicToken,
-            'Accept'        => 'application/json',
-            'Content-Type' => 'application/json',
-        ])->post($this->url, [
-            'sender_name' => $this->senderName,
-            'to' => $recipients,
-            'message' => $message,
-        ]);
-
-        // if ($response->status() !== 201) {
-        //     throw new \Exception("Erreur d'envoi du message: " . json_encode($response->json()));
-        // }
-
-        // return $response->json();
-        return true;
+        return $response->json();
     }
 }
