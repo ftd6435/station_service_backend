@@ -59,7 +59,8 @@ class UserGenerateDbContoller extends Controller
                 'days' => 7
             ]);
 
-            $message = "Bonjour !\nVotre base de donnée a été créée avec succès.\nVous pouvez vous connecter maintenant en utilisant le code de votre entreprise et votre numéro de téléphone.\nMerci de nous avoir choisi.\nSPA Technology";
+            $message = "Bonjour !\nVotre espace est prêt. Vos identifiants sont ci-dessous :\nCode : $client->code\nTéléphone : $client->telephone\n\nVous pouvez maintenant accéder à votre entreprise en ligne.\nSPA TECHNOLOGY";
+
             SendMessageEvent::dispatch($client->telephone, $message);
 
             $this->connectToDatabase($client->database);
