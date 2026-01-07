@@ -59,7 +59,7 @@ class UserGenerateDbContoller extends Controller
                 'days' => 7
             ]);
 
-            $message = "Bonjour !\nVotre espace est prêt. Vos identifiants sont ci-dessous :\nCode : $client->code\nTéléphone : $client->telephone\n\nVous pouvez maintenant accéder à votre entreprise en ligne.\nSPA TECHNOLOGY";
+            $message = "Bonjour !\nVotre espace est prêt. Vos identifiants sont ci-dessous :\nCode : $client->code\nTéléphone : $client->telephone\nMDP: 123456\n\nVous pouvez maintenant accéder à votre entreprise en ligne.\nCliquez ici: https://station.spa-dev.com/\n\nSPA TECHNOLOGY";
 
             SendMessageEvent::dispatch($client->telephone, $message);
 
