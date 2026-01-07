@@ -274,101 +274,102 @@ class UserService
 //     }
 // }
 
-    public function store(array $data)
-    {
-        try {
 
-            // =================================================
-            // 🔹 Upload image si présente
-            // =================================================
-            if (! empty($data['image'])) {
-                $data['image'] = $this->imageUpload($data['image'], 'users');
-            }
+public function store(array $data)
+{
+    try {
 
-            // =================================================
-            // 🔹 Mot de passe
-            // =================================================
-            $plainPassword    = $data['password'] ?? '123456';
-            $data['password'] = Hash::make($plainPassword);
-
-            // =================================================
-            // 🔹 Création utilisateur
-            // =================================================
-            $user = User::create($data);
-
-            // Relations utiles
-            $user->load(['station', 'createdBy', 'modifiedBy']);
-
-            // =================================================
-            // 🔹 Récupération code entreprise (HEADER: code)
-            // =================================================
-            $companyCode = $this->getCompanyCode();
-
-            // =================================================
-            // 🔹 Préparation SMS
-            // =================================================
-            $smsEnvoye = false;
-
-            if (! empty($user->telephone)) {
-
-                $stationName = Station::where('id', $data['id_station'])
-                    ->value('libelle') ?? 'votre station';
-
-                $message =
-                    "Bienvenue {$user->name}.\n"
-                    . "Votre compte a été créé avec succès.\n"
-                    . "Entreprise : {$companyCode}\n"
-                    . "Station : {$stationName}\n"
-                    . "Téléphone : {$user->telephone}\n"
-                    . "Mot de passe : {$plainPassword}";
-
-                // =================================================
-                // 🔹 Envoi SMS (NON BLOQUANT)
-                // =================================================
-                try {
-
-                    $nimbaSms    = app(NimbaSmsService::class);
-                    $smsResponse = $nimbaSms->sendOtp($user->telephone, $message);
-
-                    if ($smsResponse instanceof \Illuminate\Http\JsonResponse) {
-                        $responseData = $smsResponse->getData(true);
-
-                        if (
-                            isset($responseData['success']) &&
-                            $responseData['success'] === true
-                        ) {
-                            $smsEnvoye = true;
-                        }
-                    }
-
-                } catch (\Throwable $e) {
-
-                    // ⚠️ Log uniquement — ne jamais bloquer la création utilisateur
-                    Log::warning(
-                        "Échec de l’envoi du SMS à {$user->telephone} : " . $e->getMessage()
-                    );
-                }
-            }
-
-            // =================================================
-            // 🔹 Réponse API
-            // =================================================
-            return response()->json([
-                'status'  => 200,
-                'message' => 'Utilisateur créé avec succès.',
-                'sms'     => $smsEnvoye ? 'envoyé' : 'non envoyé',
-                'data'    => new UserResource($user),
-            ], 200);
-
-        } catch (\Throwable $e) {
-
-            return response()->json([
-                'status'  => 500,
-                'message' => 'Erreur lors de la création de l’utilisateur.',
-                'error'   => $e->getMessage(),
-            ], 500);
+        // =================================================
+        // 🔹 Upload image si présente
+        // =================================================
+        if (! empty($data['image'])) {
+            $data['image'] = $this->imageUpload($data['image'], 'users');
         }
+
+        // =================================================
+        // 🔹 Mot de passe
+        // =================================================
+        $plainPassword     = $data['password'] ?? '123456';
+        $data['password'] = Hash::make($plainPassword);
+
+        // =================================================
+        // 🔹 Création utilisateur
+        // =================================================
+        $user = User::create($data);
+
+        // Relations utiles
+        $user->load(['station', 'createdBy', 'modifiedBy']);
+
+        // =================================================
+        // 🔹 Récupération code entreprise (HEADER: code)
+        // =================================================
+        $companyCode = $this->getCompanyCode();
+
+        // =================================================
+        // 🔹 Préparation SMS
+        // =================================================
+        $smsEnvoye = false;
+
+        if (! empty($user->telephone)) {
+
+            $stationName = Station::where('id', $data['id_station'])
+                ->value('libelle') ?? 'votre station';
+
+            $message =
+                "Bienvenue {$user->name}.\n"
+                . "Votre compte a été créé avec succès.\n"
+                . "Entreprise : {$companyCode}\n"
+                . "Station : {$stationName}\n"
+                . "Téléphone : {$user->telephone}\n"
+                . "Mot de passe : {$plainPassword}";
+
+            // =================================================
+            // 🔹 Envoi SMS (NON BLOQUANT)
+            // =================================================
+            try {
+
+                $nimbaSms    = app(NimbaSmsService::class);
+                $smsResponse = $nimbaSms->sendOtp($user->telephone, $message);
+
+                if ($smsResponse instanceof \Illuminate\Http\JsonResponse) {
+                    $responseData = $smsResponse->getData(true);
+
+                    if (
+                        isset($responseData['success']) &&
+                        $responseData['success'] === true
+                    ) {
+                        $smsEnvoye = true;
+                    }
+                }
+
+            } catch (\Throwable $e) {
+
+                // ⚠️ Log uniquement — ne jamais bloquer la création utilisateur
+                Log::warning(
+                    "Échec de l’envoi du SMS à {$user->telephone} : " . $e->getMessage()
+                );
+            }
+        }
+
+        // =================================================
+        // 🔹 Réponse API
+        // =================================================
+        return response()->json([
+            'status'  => 200,
+            'message' => 'Utilisateur créé avec succès.',
+            'sms'     => $smsEnvoye ? 'envoyé' : 'non envoyé',
+            'data'    => new UserResource($user),
+        ], 200);
+
+    } catch (\Throwable $e) {
+
+        return response()->json([
+            'status'  => 500,
+            'message' => 'Erreur lors de la création de l’utilisateur.',
+            'error'   => $e->getMessage(),
+        ], 500);
     }
+}
 
     /**
      * ============================
