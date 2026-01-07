@@ -53,7 +53,8 @@ class ClientController extends Controller
             ]);
 
             // Envoi du code de l'ecole au client par notification email
-            $message = "Bonjour !\nVoici le code de votre entreprise a garder soigneusement: $client_code, utiliez le pour vous connecter a votre entreprise en ligne";
+            $message = "Bonjour !\nNous avons bien reçu votre inscription. Merci de patienter moins de 24h pendant que notre équipe prépare l’installation de votre entreprise en ligne.\n\nSPA TECHNOLOGY";
+
             SendMessageEvent::dispatch($client->telephone, $message);
 
             DB::commit();
