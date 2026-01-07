@@ -51,4 +51,34 @@ class SmsService
 
         return $response->json();
     }
+
+    public function sendMessageToMany(array $phones, string $message): array
+    {
+        $recipients = array_values(array_filter(array_unique($phones)));
+
+        if (empty($recipients)) {
+            throw new Exception('No valid phone numbers provided.');
+        }
+
+        /** @var Response $response */
+        $response = Http::withHeaders([
+            'Authorization' => 'Basic ' . $this->basicToken,
+            'Accept'        => 'application/json',
+        ])
+            ->timeout(15)
+            ->post($this->url, [
+                'sender_name' => $this->sender,
+                'to'          => $recipients,
+                'message'     => $message,
+            ]);
+
+        if (! $response->successful()) {
+            throw new Exception(
+                "Failed to send bulk SMS (HTTP {$response->status()}): " .
+                    json_encode($response->json())
+            );
+        }
+
+        return $response->json();
+    }
 }

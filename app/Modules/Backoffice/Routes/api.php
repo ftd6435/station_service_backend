@@ -28,6 +28,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1/users')->group(function () {
 
 Route::middleware(['auth:sanctum'])->prefix('v1/users')->group(function () {
     Route::post('/generate-db', [UserGenerateDbContoller::class, 'generate']);
+
+    Route::post('/notification/clients', [UserController::class, 'notifyClients']);
+    Route::get('update/clients/migrations', [UserController::class, 'updateMigrations']);
 });
 
 Route::middleware(['auth:sanctum'])->prefix('v1/users')->group(function () {
