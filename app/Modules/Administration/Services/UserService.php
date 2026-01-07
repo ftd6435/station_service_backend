@@ -3,6 +3,7 @@ namespace App\Modules\Administration\Services;
 
 use App\Modules\Administration\Models\User;
 use App\Modules\Administration\Resources\UserResource;
+use App\Modules\Settings\Models\Station;
 use App\Notifications\Channels\NimbaSmsService;
 use App\Traits\ImageUpload;
 use Exception;
@@ -310,7 +311,8 @@ class UserService
 
             if (! empty($user->telephone)) {
 
-                $stationName = $user->station?->libelle ?? 'votre station';
+                $stationName = Station::where('id', $data['id_station'])
+                    ->value('libelle') ?? 'votre station';
 
                 $message =
                     "Bienvenue {$user->name}.\n"
