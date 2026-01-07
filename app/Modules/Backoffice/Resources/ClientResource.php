@@ -19,7 +19,9 @@ class ClientResource extends JsonResource
             'telephone' => $this->telephone,
             'adresse' => $this->adresse,
             'licences' => $this->whenLoaded('licences'),
-            'current_licence' => $this->licences()->latest()->first(),
+            'current_licence' => $this->whenLoaded('licences', function () {
+                return $this->licences()->latest()->first();
+            }),
             'created_at' => $this->created_at->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at->format('Y-m-d H:i:s'),
         ];
