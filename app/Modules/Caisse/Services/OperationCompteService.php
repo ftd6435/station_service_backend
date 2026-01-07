@@ -16,11 +16,12 @@ class OperationCompteService
         try {
 
             $operations = OperationCompte::visible()
+                ->whereDoesntHave('typeOperation', function ($q) {
+                    $q->where('nature', 2);
+                })
                 ->with([
                     'typeOperation',
                     'compte.station',
-                    'source.station',
-                    'destination.station',
                     'createdBy',
                 ])
                 ->orderByDesc('created_at')
