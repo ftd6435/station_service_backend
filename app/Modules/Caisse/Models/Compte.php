@@ -105,8 +105,12 @@ class Compte extends Model
     {
         $solde = (float) $this->solde_initial;
 
-        $operations = $this->operations()
-            ->where('status', 'effectif')
+        $operations = OperationCompte::where('status', 'effectif')
+            ->where(function ($q) {
+                $q->where('id_compte', $this->id)
+                    ->orWhere('id_source', $this->id)
+                    ->orWhere('id_destination', $this->id);
+            })
             ->with('typeOperation')
             ->get();
 
@@ -130,7 +134,7 @@ class Compte extends Model
             }
 
             // =============================
-            // 🔹 TRANSFERT (UNE SEULE LIGNE)
+            // 🔹 TRANSFERT
             // =============================
             if ($nature === 2) {
 
