@@ -17,18 +17,19 @@ return new class extends Migration
 
             // Utilisateur (pompiste / gérant / etc.)
             $table->foreignId('id_user')
-                  ->constrained('users')
-                  ->cascadeOnDelete();
+                ->constrained('users')
+                ->cascadeOnDelete();
 
             // Station
             $table->foreignId('id_station')
-                  ->constrained('stations')
-                  ->cascadeOnDelete();
+                ->constrained('stations')
+                ->cascadeOnDelete();
 
             // Pompe
             $table->foreignId('id_pompe')
-                  ->constrained('pompes')
-                  ->cascadeOnDelete();
+                ->nullable()
+                ->constrained('pompes')
+                ->nullOnDelete();
 
             // =========================
             // 🔹 ÉTAT
@@ -39,14 +40,14 @@ return new class extends Migration
             // 🔹 AUDIT
             // =========================
             $table->foreignId('created_by')
-                  ->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
 
             $table->foreignId('modify_by')
-                  ->nullable()
-                  ->constrained('users')
-                  ->nullOnDelete();
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
 
             $table->timestamps();
         });
