@@ -68,27 +68,63 @@ class ProduitService
      * CRÉATION (CUVE)
      * =========================
      */
+    // public function store(array $data)
+    // {
+    //     try {
+
+    //         $produit = Cuve::create($data);
+
+    //         return response()->json([
+    //             'status'  => 200,
+    //             'message' => 'Cuve créée avec succès.',
+    //             'data'    => new ProduitResource($produit),
+    //         ]);
+
+    //     } catch (Exception $e) {
+
+    //         return response()->json([
+    //             'status'  => 500,
+    //             'message' => 'Erreur lors de la création de la cuve.',
+    //             'error'   => $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
     public function store(array $data)
-    {
-        try {
+{
+    try {
 
-            $produit = Cuve::create($data);
-
-            return response()->json([
-                'status'  => 200,
-                'message' => 'Cuve créée avec succès.',
-                'data'    => new ProduitResource($produit),
-            ]);
-
-        } catch (Exception $e) {
-
-            return response()->json([
-                'status'  => 500,
-                'message' => 'Erreur lors de la création de la cuve.',
-                'error'   => $e->getMessage(),
-            ], 500);
+        // =================================================
+        // 🔹 INITIALISATION STOCK
+        // qt_actuelle = qt_initial à la création
+        // =================================================
+        if (
+            array_key_exists('qt_initial', $data)
+            && ! array_key_exists('qt_actuelle', $data)
+        ) {
+            $data['qt_actuelle'] = $data['qt_initial'];
         }
+
+        // =================================================
+        // 🔹 CRÉATION CUVE
+        // =================================================
+        $produit = Cuve::create($data);
+
+        return response()->json([
+            'status'  => 200,
+            'message' => 'Cuve créée avec succès.',
+            'data'    => new ProduitResource($produit),
+        ]);
+
+    } catch (Exception $e) {
+
+        return response()->json([
+            'status'  => 500,
+            'message' => 'Erreur lors de la création de la cuve.',
+            'error'   => $e->getMessage(),
+        ], 500);
     }
+}
+
 
     /**
      * =========================
