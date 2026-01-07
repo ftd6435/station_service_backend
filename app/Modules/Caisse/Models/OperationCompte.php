@@ -75,10 +75,73 @@ class OperationCompte extends Model
         return $query->where('status', 'effectif');
     }
 
+    // public function scopeVisible(Builder $query): Builder
+    // {
+    //     return $query->whereHas('compte', fn ($q) => $q->visible());
+    // }
     public function scopeVisible(Builder $query): Builder
-    {
-        return $query->whereHas('compte', fn ($q) => $q->visible());
+{
+    $user = Auth::user();
+
+    if (! $user) {
+        return $query->whereRaw('1 = 0');
     }
+
+    /**
+     * 🔥 SUPER ADMIN → tout voir
+     */
+    if ($user->role === 'super_admin') {
+        return $query;
+    }
+
+    /**
+     * =================================================
+     * 🔹 Station courante de l'utilisateur
+     * =================================================
+     */
+    $stationId = $user->id_station
+        ?? $user->affectations()
+            ->where('status', true)
+            ->latest('created_at')
+            ->value('id_station');
+
+    if (! $stationId) {
+        return $query->whereRaw('1 = 0');
+    }
+
+    /**
+     * =================================================
+     * 🔎 VISIBILITÉ OPÉRATIONS
+     * =================================================
+     */
+    return $query->where(function (Builder $q) use ($stationId) {
+
+        /**
+         * 🔴 CAS 1 : TRANSFERT ÉMIS
+         * → station = source
+         */
+        $q->whereHas('source', function (Builder $qs) use ($stationId) {
+            $qs->where('id_station', $stationId);
+        })
+
+        /**
+         * 🟢 CAS 2 : TRANSFERT REÇU
+         * → station = destination
+         */
+        ->orWhereHas('destination', function (Builder $qd) use ($stationId) {
+            $qd->where('id_station', $stationId);
+        })
+
+        /**
+         * 🔵 CAS 3 : OPÉRATIONS SIMPLES
+         * → station = compte
+         */
+        ->orWhereHas('compte', function (Builder $qc) use ($stationId) {
+            $qc->where('id_station', $stationId);
+        });
+    });
+}
+
 
     /**
      * =================================================
