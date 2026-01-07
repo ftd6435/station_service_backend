@@ -45,7 +45,7 @@ class ClientController extends Controller
                 'code_licence' => $this->getLicence(),
                 'date_achat' => now()->format('Y-m-d'),
                 'date_expiration' => null,
-                'days' => 30,
+                'days' => 14,
                 'is_available' => false,
                 'is_sent' => true,
                 'client_id' => $client->id,
