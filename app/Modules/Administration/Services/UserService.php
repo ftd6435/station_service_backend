@@ -312,8 +312,7 @@ public function store(array $data)
 
         if (! empty($user->telephone)) {
 
-            $stationName = Station::where('id', $data['id_station'])
-                ->value('libelle') ?? 'votre station';
+            $stationName ='votre station';
 
             $message =
                 "Bienvenue {$user->name}.\n"
