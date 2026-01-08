@@ -35,23 +35,22 @@ class DashboardService
         $today = Carbon::today();
 
         $ventes = LigneVente::visible()
-            ->whereDate('created_at', $today)
-            ->where('status', true);
+            ->where('ligne_ventes.status', true)
+            ->whereDate('ligne_ventes.created_at', $today);
 
         $ventesDuJour = (clone $ventes)->count();
-        $volumeVendu  = (clone $ventes)->sum('qte_vendu');
+        $volumeVendu  = (clone $ventes)->sum('ligne_ventes.qte_vendu');
+
+        // ❗ Recettes volontairement désactivées pour l’instant
+        $recettesDuJour = 0;
 
         $totalPompes   = Pompe::visible()->count();
         $pompesActives = Pompe::visible()->where('status', true)->count();
 
         return [
             'ventes_du_jour'   => $ventesDuJour,
-
-            // ⚠️ volontairement à 0 (branché plus tard à la caisse)
-            'recettes_du_jour' => 0,
-
+            'recettes_du_jour' => (float) $recettesDuJour,
             'volume_vendu'     => (float) $volumeVendu,
-
             'pompes_actives'   => [
                 'actives' => $pompesActives,
                 'total'   => $totalPompes,
@@ -69,18 +68,18 @@ class DashboardService
         $start = Carbon::now()->subDays(6)->startOfDay();
 
         return LigneVente::visible()
-            ->where('status', true)
-            ->where('created_at', '>=', $start)
+            ->where('ligne_ventes.status', true)
+            ->where('ligne_ventes.created_at', '>=', $start)
             ->selectRaw('
-                DATE(created_at) as date,
-                SUM(qte_vendu) as volume
+                DATE(ligne_ventes.created_at) as date,
+                SUM(ligne_ventes.qte_vendu) as volume
             ')
-            ->groupBy(DB::raw('DATE(created_at)'))
+            ->groupBy(DB::raw('DATE(ligne_ventes.created_at)'))
             ->orderBy('date')
             ->get()
             ->map(fn ($row) => [
                 'date'    => $row->date,
-                'montant' => 0, // prévu plus tard
+                'montant' => 0, // caisse non branchée
                 'volume'  => (float) $row->volume,
             ])
             ->toArray();
@@ -88,8 +87,8 @@ class DashboardService
 
     /**
      * =================================================
-     * 🔹 RÉPARTITION PAR TYPE DE POMPE
-     * (ESSENCE / GASOIL)
+     * 🔹 RÉPARTITION PAR CARBURANT
+     * (basée sur pompes.type_pompe)
      * =================================================
      */
     private function getRepartitionCarburant(): array
@@ -110,7 +109,7 @@ class DashboardService
             ->groupBy('pompes.type_pompe')
             ->get()
             ->map(fn ($row) => [
-                'type_pompe' => $row->type_pompe, // essence / gasoil
+                'type_pompe' => $row->type_pompe, // essence | gasoil
                 'volume'     => (float) $row->volume,
             ])
             ->toArray();
@@ -118,7 +117,7 @@ class DashboardService
 
     /**
      * =================================================
-     * 🔹 VOLUME VENDU PAR POMPE
+     * 🔹 VOLUME PAR POMPE
      * =================================================
      */
     private function getVolumeParPompe(): array
@@ -126,10 +125,7 @@ class DashboardService
         return LigneVente::visible()
             ->where('ligne_ventes.status', true)
 
-            // ligne_ventes → affectations
             ->join('affectations', 'ligne_ventes.id_affectation', '=', 'affectations.id')
-
-            // affectations → pompes
             ->join('pompes', 'affectations.id_pompe', '=', 'pompes.id')
 
             ->selectRaw('
@@ -153,11 +149,11 @@ class DashboardService
      */
     private function getApprovisionnements30Jours(): array
     {
-        return DB::table('approvisionnement_cuves')
+        return DB::table('approvisionnements')
             ->where('created_at', '>=', Carbon::now()->subDays(30))
             ->selectRaw('
                 DATE(created_at) as date,
-                SUM(qte_appro) as volume
+                SUM(volume) as volume
             ')
             ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')
