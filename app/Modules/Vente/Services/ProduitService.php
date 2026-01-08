@@ -183,79 +183,67 @@ class ProduitService
             ], 500);
         }
     }
+
 private function calculerStockJournalierParCuve(int $idCuve): array
 {
-    $dateCarbon = Carbon::today();
+    $date = Carbon::today();
 
     /**
-     * 1️⃣ MESURE MATIN (première saisie du jour)
+     * 1️⃣ STOCK MATIN
+     * → première lecture cuve de la journée
      */
-    $mesureMatin = DB::table('vente_litres')
+    $stockMatin = DB::table('vente_litres')
         ->where('id_cuve', $idCuve)
-        ->whereDate('created_at', $dateCarbon)
-        ->orderBy('created_at', 'asc')
-        ->value('qte_vendu');
-
-    /**
-     * 2️⃣ MESURE SOIR (dernière saisie du jour)
-     */
-    $mesureSoir = DB::table('vente_litres')
-        ->where('id_cuve', $idCuve)
-        ->whereDate('created_at', $dateCarbon)
-        ->orderBy('created_at', 'desc')
-        ->value('qte_vendu');
-
-    /**
-     * 3️⃣ STOCK INITIAL
-     * → dernière mesure AVANT aujourd’hui
-     */
-    $stockInitial = DB::table('vente_litres')
-        ->where('id_cuve', $idCuve)
-        ->where('created_at', '<', $dateCarbon->copy()->startOfDay())
-        ->orderByDesc('created_at')
+        ->whereDate('created_at', $date)
+        ->orderBy('created_at', 'asc')   // 👈 IMPORTANT
         ->value('qte_vendu') ?? 0;
 
     /**
-     * 4️⃣ ENTRÉES (approvisionnement du jour)
+     * 2️⃣ ENTRÉES DU JOUR
+     * → bons de livraison
      */
     $entrees = DB::table('approvisionnement_cuves')
         ->where('id_cuve', $idCuve)
-        ->whereDate('created_at', $dateCarbon)
+        ->whereDate('created_at', $date)
         ->sum('qte_appro');
 
     /**
-     * 5️⃣ STOCK PHYSIQUE (lecture du soir)
+     * 3️⃣ SORTIES (VENTES RÉELLES)
+     * → issues UNIQUEMENT des ventes par index
      */
-    $stockPhysique = $mesureSoir ?? $stockInitial;
+    $sorties = DB::table('lignes_vente')
+        ->where('id_cuve', $idCuve)
+        ->whereDate('created_at', $date)
+        ->sum('qte_vendu');
 
     /**
-     * 6️⃣ SORTIES (LOGIQUE EXCEL)
-     * sorties = (stock initial + entrées) - stock physique
+     * 4️⃣ STOCK THÉORIQUE (LOGIQUE EXCEL / STATION)
      */
-    $sorties = ($stockInitial + $entrees) - $stockPhysique;
+    $stockTheorique = $stockMatin + $entrees - $sorties;
 
     /**
-     * 7️⃣ RETOUR CUVE (manuel pour l’instant)
+     * 5️⃣ STOCK PHYSIQUE SOIR
+     * → dernière lecture cuve de la journée
      */
-    $retourCuve = 0;
+    $stockPhysique = DB::table('vente_litres')
+        ->where('id_cuve', $idCuve)
+        ->whereDate('created_at', $date)
+        ->orderBy('created_at', 'desc')  // 👈 IMPORTANT
+        ->value('qte_vendu') ?? 0;
 
     /**
-     * 8️⃣ STOCK THÉORIQUE
-     */
-    $stockTheorique = $stockInitial + $entrees - $sorties + $retourCuve;
-
-    /**
-     * 9️⃣ ÉCART
+     * 6️⃣ ÉCART (CONTRÔLE)
+     * positif = surplus
+     * négatif = manque
      */
     $ecart = $stockPhysique - $stockTheorique;
 
     return [
-        'date'            => $dateCarbon->toDateString(),
+        'date'            => $date->toDateString(),
         'id_cuve'         => $idCuve,
-        'stock_initial'   => (float) $stockInitial,
+        'stock_matin'     => (float) $stockMatin,
         'entrees'         => (float) $entrees,
         'sorties'         => (float) $sorties,
-        'retour_cuve'     => (float) $retourCuve,
         'stock_theorique' => (float) $stockTheorique,
         'stock_physique'  => (float) $stockPhysique,
         'ecart'           => (float) $ecart,
