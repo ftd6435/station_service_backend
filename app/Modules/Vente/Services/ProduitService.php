@@ -377,153 +377,166 @@ class ProduitService
 
 
 public function calculerParCuve(int $idCuve): array
-    {
-        $date = Carbon::today();
+{
+    $date = Carbon::today();
 
-        /**
-         * =================================================
-         * 🔐 SÉCURITÉ : CUVE VISIBLE
-         * =================================================
-         */
-        $cuve = Cuve::visible()
-            ->with('station:id,libelle')
-            ->find($idCuve);
+    /**
+     * =================================================
+     * 🔐 SÉCURITÉ : CUVE VISIBLE
+     * =================================================
+     */
+    $cuve = Cuve::visible()
+        ->with('station:id,libelle')
+        ->find($idCuve);
 
-        if (! $cuve) {
-            return [
-                'status'  => 403,
-                'message' => 'Cuve non autorisée.',
-            ];
-        }
-
-        /**
-         * =================================================
-         * 1️⃣ STOCK MATIN (LECTURE CUVE)
-         * =================================================
-         */
-        $stockMatin = VenteLitre::visible()
-            ->where('id_cuve', $idCuve)
-            ->whereDate('created_at', $date)
-            ->orderBy('created_at', 'asc')
-            ->value('qte_vendu') ?? 0;
-
-        /**
-         * =================================================
-         * 2️⃣ ENTRÉES (APPROVISIONNEMENTS)
-         * =================================================
-         */
-        $entrees = ApprovisionnementCuve::visible()
-            ->where('id_cuve', $idCuve)
-            ->whereDate('created_at', $date)
-            ->sum('qte_appro');
-
-        /**
-         * =================================================
-         * 3️⃣ SORTIES (VENTES PAR INDEX)
-         * =================================================
-         */
-        $sorties = LigneVente::visible()
-            ->where('id_cuve', $idCuve)
-            ->whereDate('created_at', $date)
-            ->sum('qte_vendu');
-
-        /**
-         * =================================================
-         * 4️⃣ STOCK THÉORIQUE (LOGIQUE EXCEL)
-         * =================================================
-         */
-        $stockTheorique = $stockMatin + $entrees - $sorties;
-
-        /**
-         * =================================================
-         * 5️⃣ STOCK PHYSIQUE SOIR
-         * =================================================
-         */
-        $stockPhysique = VenteLitre::visible()
-            ->where('id_cuve', $idCuve)
-            ->whereDate('created_at', $date)
-            ->orderBy('created_at', 'desc')
-            ->value('qte_vendu') ?? $stockMatin;
-
-        /**
-         * =================================================
-         * 6️⃣ ÉCART
-         * =================================================
-         */
-        $ecart = $stockPhysique - $stockTheorique;
-
-        /**
-         * =================================================
-         * 👥 DONNÉES OPÉRATIONNELLES
-         * 1 pompe = 1 pompiste (affectation.user)
-         * =================================================
-         */
-        $ventes = LigneVente::visible()
-            ->with([
-                'affectation.pompe:id,libelle',
-                'affectation.user:id,name,email,telephone',
-            ])
-            ->where('id_cuve', $idCuve)
-            ->whereDate('created_at', $date)
-            ->get();
-
-        /**
-         * 🔹 Pompes avec leur pompiste UNIQUE
-         */
-        $pompes = $ventes
-            ->filter(fn ($v) =>
-                $v->affectation &&
-                $v->affectation->pompe &&
-                $v->affectation->user
-            )
-            ->groupBy(fn ($v) => $v->affectation->pompe->id)
-            ->map(function ($group) {
-
-                $pompe = $group->first()->affectation->pompe;
-                $pompiste = $group->first()->affectation->user;
-
-                return [
-                    'id'      => $pompe->id,
-                    'libelle' => $pompe->libelle,
-                    'pompiste' => [
-                        'id'        => $pompiste->id,
-                        'name'      => $pompiste->name,
-                        'email'     => $pompiste->email,
-                        'telephone' => $pompiste->telephone,
-                    ],
-                ];
-            })
-            ->values()
-            ->toArray();
-
-        /**
-         * =================================================
-         * 📤 RÉPONSE FINALE
-         * =================================================
-         */
+    if (! $cuve) {
         return [
-            'date' => $date->toDateString(),
-
-            'station' => [
-                'id'      => $cuve->station->id,
-                'libelle' => $cuve->station->libelle,
-            ],
-
-            'cuve' => [
-                'id'      => $cuve->id,
-                'libelle' => $cuve->libelle,
-            ],
-
-            'pompes' => $pompes,
-
-            'stock_matin'     => (float) $stockMatin,
-            'entrees'         => (float) $entrees,
-            'sorties'         => (float) $sorties,
-            'stock_theorique' => (float) $stockTheorique,
-            'stock_physique'  => (float) $stockPhysique,
-            'ecart'           => (float) $ecart,
+            'status'  => 403,
+            'message' => 'Cuve non autorisée.',
         ];
     }
+
+    /**
+     * =================================================
+     * 1️⃣ STOCK MATIN (LECTURE CUVE)
+     * =================================================
+     */
+    $stockMatin = VenteLitre::visible()
+        ->where('id_cuve', $idCuve)
+        ->whereDate('created_at', $date)
+        ->orderBy('created_at', 'asc')
+        ->value('qte_vendu') ?? 0;
+
+    /**
+     * =================================================
+     * 2️⃣ ENTRÉES RÉELLES (APPROVISIONNEMENTS)
+     * =================================================
+     */
+    $entrees = ApprovisionnementCuve::visible()
+        ->where('id_cuve', $idCuve)
+        ->whereDate('created_at', $date)
+        ->where('type_appro', 'approvisionnement')
+        ->sum('qte_appro');
+
+    /**
+     * =================================================
+     * 3️⃣ RETOUR CUVE (AJUSTEMENT INTERNE)
+     * =================================================
+     */
+    $retourCuve = ApprovisionnementCuve::visible()
+        ->where('id_cuve', $idCuve)
+        ->whereDate('created_at', $date)
+        ->where('type_appro', 'retour_cuve')
+        ->sum('qte_appro');
+
+    /**
+     * =================================================
+     * 4️⃣ SORTIES (VENTES PAR INDEX)
+     * =================================================
+     */
+    $sorties = LigneVente::visible()
+        ->where('id_cuve', $idCuve)
+        ->whereDate('created_at', $date)
+        ->sum('qte_vendu');
+
+    /**
+     * =================================================
+     * 5️⃣ STOCK THÉORIQUE (LOGIQUE EXCEL AVANCÉ)
+     * =================================================
+     */
+    $stockTheorique = $stockMatin + $entrees + $retourCuve - $sorties;
+
+    /**
+     * =================================================
+     * 6️⃣ STOCK PHYSIQUE SOIR
+     * =================================================
+     */
+    $stockPhysique = VenteLitre::visible()
+        ->where('id_cuve', $idCuve)
+        ->whereDate('created_at', $date)
+        ->orderBy('created_at', 'desc')
+        ->value('qte_vendu') ?? $stockMatin;
+
+    /**
+     * =================================================
+     * 7️⃣ ÉCART
+     * =================================================
+     */
+    $ecart = $stockPhysique - $stockTheorique;
+
+    /**
+     * =================================================
+     * 👥 DONNÉES OPÉRATIONNELLES
+     * 1 pompe = 1 pompiste (affectation.user)
+     * =================================================
+     */
+    $ventes = LigneVente::visible()
+        ->with([
+            'affectation.pompe:id,libelle',
+            'affectation.user:id,name,email,telephone',
+        ])
+        ->where('id_cuve', $idCuve)
+        ->whereDate('created_at', $date)
+        ->get();
+
+    /**
+     * 🔹 Pompes avec leur pompiste UNIQUE
+     */
+    $pompes = $ventes
+        ->filter(fn ($v) =>
+            $v->affectation &&
+            $v->affectation->pompe &&
+            $v->affectation->user
+        )
+        ->groupBy(fn ($v) => $v->affectation->pompe->id)
+        ->map(function ($group) {
+
+            $pompe = $group->first()->affectation->pompe;
+            $pompiste = $group->first()->affectation->user;
+
+            return [
+                'id'      => $pompe->id,
+                'libelle' => $pompe->libelle,
+                'pompiste' => [
+                    'id'        => $pompiste->id,
+                    'name'      => $pompiste->name,
+                    'email'     => $pompiste->email,
+                    'telephone' => $pompiste->telephone,
+                ],
+            ];
+        })
+        ->values()
+        ->toArray();
+
+    /**
+     * =================================================
+     * 📤 RÉPONSE FINALE
+     * =================================================
+     */
+    return [
+        'date' => $date->toDateString(),
+
+        'station' => [
+            'id'      => $cuve->station->id,
+            'libelle' => $cuve->station->libelle,
+        ],
+
+        'cuve' => [
+            'id'      => $cuve->id,
+            'libelle' => $cuve->libelle,
+        ],
+
+        'pompes' => $pompes,
+
+        'stock_matin'     => (float) $stockMatin,
+        'entrees'         => (float) $entrees,
+        'retour_cuve'     => (float) $retourCuve,
+        'sorties'         => (float) $sorties,
+        'stock_theorique' => (float) $stockTheorique,
+        'stock_physique'  => (float) $stockPhysique,
+        'ecart'           => (float) $ecart,
+    ];
+}
 
     /**
      * =================================================
