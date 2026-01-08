@@ -149,7 +149,7 @@ class DashboardService
      */
     private function getApprovisionnements30Jours(): array
     {
-        return DB::table('approvisionnements')
+        return DB::table('approvisionnement_cuves')
             ->where('created_at', '>=', Carbon::now()->subDays(30))
             ->selectRaw('
                 DATE(created_at) as date,
