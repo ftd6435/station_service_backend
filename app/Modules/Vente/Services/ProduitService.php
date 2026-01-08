@@ -376,7 +376,6 @@ class ProduitService
 
 
 
-
 public function calculerParCuve(int $idCuve): array
     {
         $date = Carbon::today();
@@ -399,8 +398,7 @@ public function calculerParCuve(int $idCuve): array
 
         /**
          * =================================================
-         * 1️⃣ STOCK MATIN
-         * → première lecture cuve du jour
+         * 1️⃣ STOCK MATIN (LECTURE CUVE)
          * =================================================
          */
         $stockMatin = VenteLitre::visible()
@@ -439,7 +437,6 @@ public function calculerParCuve(int $idCuve): array
         /**
          * =================================================
          * 5️⃣ STOCK PHYSIQUE SOIR
-         * → dernière lecture cuve du jour
          * =================================================
          */
         $stockPhysique = VenteLitre::visible()
@@ -458,7 +455,7 @@ public function calculerParCuve(int $idCuve): array
         /**
          * =================================================
          * 👥 DONNÉES OPÉRATIONNELLES
-         * (pompes + pompistes via affectation.user)
+         * 1 pompe = 1 pompiste (affectation.user)
          * =================================================
          */
         $ventes = LigneVente::visible()
@@ -471,33 +468,32 @@ public function calculerParCuve(int $idCuve): array
             ->get();
 
         /**
-         * 🔹 Pompes utilisées
+         * 🔹 Pompes avec leur pompiste UNIQUE
          */
         $pompes = $ventes
-            ->pluck('affectation.pompe')
-            ->filter()
-            ->unique('id')
-            ->values()
-            ->map(fn ($p) => [
-                'id'      => $p->id,
-                'libelle' => $p->libelle,
-            ])
-            ->toArray();
+            ->filter(fn ($v) =>
+                $v->affectation &&
+                $v->affectation->pompe &&
+                $v->affectation->user
+            )
+            ->groupBy(fn ($v) => $v->affectation->pompe->id)
+            ->map(function ($group) {
 
-        /**
-         * 🔹 Pompistes (vérité terrain = affectation.user)
-         */
-        $pompistes = $ventes
-            ->pluck('affectation.user')
-            ->filter()
-            ->unique('id')
+                $pompe = $group->first()->affectation->pompe;
+                $pompiste = $group->first()->affectation->user;
+
+                return [
+                    'id'      => $pompe->id,
+                    'libelle' => $pompe->libelle,
+                    'pompiste' => [
+                        'id'        => $pompiste->id,
+                        'name'      => $pompiste->name,
+                        'email'     => $pompiste->email,
+                        'telephone' => $pompiste->telephone,
+                    ],
+                ];
+            })
             ->values()
-            ->map(fn ($u) => [
-                'id'        => $u->id,
-                'name'      => $u->name,
-                'email'     => $u->email,
-                'telephone' => $u->telephone,
-            ])
             ->toArray();
 
         /**
@@ -518,8 +514,7 @@ public function calculerParCuve(int $idCuve): array
                 'libelle' => $cuve->libelle,
             ],
 
-            'pompes'    => $pompes,
-            'pompistes' => $pompistes,
+            'pompes' => $pompes,
 
             'stock_matin'     => (float) $stockMatin,
             'entrees'         => (float) $entrees,
@@ -554,6 +549,5 @@ public function calculerParCuve(int $idCuve): array
             'data'    => $resultats,
         ];
     }
-
 
 }
