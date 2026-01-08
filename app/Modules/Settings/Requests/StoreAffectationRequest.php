@@ -19,7 +19,9 @@ class StoreAffectationRequest extends FormRequest
             'id_pompe'     => 'nullable|exists:pompes,id',
             'id_user'  => 'required|exists:users,id',
             'id_station'   => 'required|exists:stations,id',
+            'id_cuve'   => 'nullable|exists:cuves,id',
             'index_debut' =>'nullable|numeric|min:0',
+
             'status'       => 'nullable|boolean',
         ];
     }
