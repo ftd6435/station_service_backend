@@ -11,6 +11,10 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['station.db', 'auth:sanctum'])->prefix('v1/vente')->group(function () {
     Route::apiResource('cuves', ProduitController::class);
     //  Route::apiResource('ligne-ventes',LigneVenteController::class);
+     Route::get(
+        'statistiques/cuves/journalier',
+        [ProduitController::class, 'calculerStockJournalierToutesCuves']
+    );
     Route::post(
         'ligne-ventes/index-fin/{id}',
         [LigneVenteController::class, 'update']

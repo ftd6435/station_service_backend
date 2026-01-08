@@ -37,4 +37,10 @@ class ProduitController extends Controller
     {
         return $this->service->delete($id);
     }
+
+     public function calculerStockJournalierToutesCuves()
+    {
+        return $this->service->calculerStockJournalierToutesCuves();
+    }
+    
 }
