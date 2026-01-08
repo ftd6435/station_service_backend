@@ -40,7 +40,7 @@ class ProduitController extends Controller
 
      public function calculerStockJournalierToutesCuves()
     {
-        return $this->service->calculerStockJournalierToutesCuves();
+        return $this->service->calculerToutesCuves();
     }
     
 }

@@ -52,63 +52,83 @@ class VenteLitre extends Model
      * SCOPE : VISIBILITÉ DES VENTES
      * =================================================
      */
+    // public function scopeVisible(Builder $query): Builder
+    // {
+    //     $user = Auth::user();
+
+    //     if (! $user) {
+    //         return $query->whereRaw('1 = 0');
+    //     }
+
+    //     /**
+    //      * 🔥 SUPER ADMIN
+    //      * → toutes les ventes
+    //      */
+    //     if ($user->role === 'super_admin') {
+    //         return $query;
+    //     }
+
+    //     /**
+    //      * 🔴 POMPISTE
+    //      * → ventes de TOUTES les stations
+    //      *   liées à SES affectations (actives ou non)
+    //      */
+    //     if ($user->role === 'pompiste') {
+
+    //         $stationIds = $user->affectations()
+    //             ->pluck('id_station')
+    //             ->filter()
+    //             ->unique()
+    //             ->values()
+    //             ->all();
+
+    //         if (empty($stationIds)) {
+    //             return $query->whereRaw('1 = 0');
+    //         }
+
+    //         return $query->whereHas('cuve', function ($q) use ($stationIds) {
+    //             $q->whereIn('id_station', $stationIds);
+    //         });
+    //     }
+
+    //     /**
+    //      * 🔵 ADMIN / 🟣 SUPERVISEUR / 🟡 GÉRANT
+    //      * → ventes de la station issue
+    //      *   de la DERNIÈRE affectation active
+    //      */
+    //     $stationId = $user->affectations()
+    //         ->where('status', true)
+    //         ->latest('created_at')
+    //         ->value('id_station');
+
+    //     if (! $stationId) {
+    //         return $query->whereRaw('1 = 0');
+    //     }
+
+    //     return $query->whereHas('cuve', function ($q) use ($stationId) {
+    //         $q->where('id_station', $stationId);
+    //     });
+    // }
+
     public function scopeVisible(Builder $query): Builder
-    {
-        $user = Auth::user();
+{
+    $user = Auth::user();
 
-        if (! $user) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        /**
-         * 🔥 SUPER ADMIN
-         * → toutes les ventes
-         */
-        if ($user->role === 'super_admin') {
-            return $query;
-        }
-
-        /**
-         * 🔴 POMPISTE
-         * → ventes de TOUTES les stations
-         *   liées à SES affectations (actives ou non)
-         */
-        if ($user->role === 'pompiste') {
-
-            $stationIds = $user->affectations()
-                ->pluck('id_station')
-                ->filter()
-                ->unique()
-                ->values()
-                ->all();
-
-            if (empty($stationIds)) {
-                return $query->whereRaw('1 = 0');
-            }
-
-            return $query->whereHas('cuve', function ($q) use ($stationIds) {
-                $q->whereIn('id_station', $stationIds);
-            });
-        }
-
-        /**
-         * 🔵 ADMIN / 🟣 SUPERVISEUR / 🟡 GÉRANT
-         * → ventes de la station issue
-         *   de la DERNIÈRE affectation active
-         */
-        $stationId = $user->affectations()
-            ->where('status', true)
-            ->latest('created_at')
-            ->value('id_station');
-
-        if (! $stationId) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        return $query->whereHas('cuve', function ($q) use ($stationId) {
-            $q->where('id_station', $stationId);
-        });
+    if (! $user) {
+        return $query->whereRaw('1 = 0');
     }
+
+    // 🔥 Super admin : tout voir
+    if ($user->role === 'super_admin') {
+        return $query;
+    }
+
+    // 🔹 Toutes les autres règles passent par la visibilité des cuves
+    return $query->whereHas('cuve', function ($q) {
+        $q->visible(); // 👈 héritage DIRECT de Cuve::visible()
+    });
+}
+
 
     /**
      * =================================================

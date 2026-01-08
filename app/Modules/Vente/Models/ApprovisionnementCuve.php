@@ -45,34 +45,54 @@ class ApprovisionnementCuve extends Model
      * (basé sur la DERNIÈRE affectation active)
      * =========================
      */
+    // public function scopeVisible(Builder $query): Builder
+    // {
+    //     $user = Auth::user();
+
+    //     if (! $user) {
+    //         return $query->whereRaw('1 = 0');
+    //     }
+
+    //     // Super admin : tout voir
+    //     if ($user->role === 'super_admin') {
+    //         return $query;
+    //     }
+
+    //     // Station issue de la dernière affectation
+    //     $stationId = $user->affectations()
+    //         ->where('status', true)
+    //         ->latest('created_at')
+    //         ->value('id_station');
+
+    //     if (! $stationId) {
+    //         return $query->whereRaw('1 = 0');
+    //     }
+
+    //     // Filtrage via la cuve
+    //     return $query->whereHas('cuve', function (Builder $q) use ($stationId) {
+    //         $q->where('id_station', $stationId);
+    //     });
+    // }
+
     public function scopeVisible(Builder $query): Builder
-    {
-        $user = Auth::user();
+{
+    $user = Auth::user();
 
-        if (! $user) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        // Super admin : tout voir
-        if ($user->role === 'super_admin') {
-            return $query;
-        }
-
-        // Station issue de la dernière affectation
-        $stationId = $user->affectations()
-            ->where('status', true)
-            ->latest('created_at')
-            ->value('id_station');
-
-        if (! $stationId) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        // Filtrage via la cuve
-        return $query->whereHas('cuve', function (Builder $q) use ($stationId) {
-            $q->where('id_station', $stationId);
-        });
+    if (! $user) {
+        return $query->whereRaw('1 = 0');
     }
+
+    // 🔥 Super admin : tout voir
+    if ($user->role === 'super_admin') {
+        return $query;
+    }
+
+    // 🔹 Héritage direct de la visibilité des cuves
+    return $query->whereHas('cuve', function (Builder $q) {
+        $q->visible();
+    });
+}
+
 
     /**
      * =========================
