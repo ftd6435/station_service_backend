@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Modules\Vente\Services;
 
 use App\Modules\Vente\Models\Cuve;
@@ -71,41 +70,39 @@ class VenteLitreService
         DB::beginTransaction();
 
         try {
-            $qte = (float) ($data['qte_vendu'] ?? 0);
 
-            if ($qte <= 0) {
+            $niveauCuve = (float) ($data['qte_vendu'] ?? 0);
+
+            if ($niveauCuve < 0) {
                 return response()->json([
-                    'status'  => 409,
-                    'message' => 'Quantité vendue invalide.',
-                ], 409);
+                    'status'  => 422,
+                    'message' => 'Lecture de cuve invalide.',
+                ], 422);
             }
 
-            // 🔒 CUVE SANS SCOPE
-            $cuve = Cuve::lockForUpdate()->find($data['id_cuve']);
+            /**
+             * =================================================
+             * 🔒 CUVE VISIBLE (PAS DE DÉDUCTION)
+             * =================================================
+             */
+            $cuve = Cuve::visible()->find($data['id_cuve']);
 
             if (! $cuve) {
                 return response()->json([
                     'status'  => 404,
-                    'message' => 'Cuve introuvable.',
+                    'message' => 'Cuve introuvable ou non autorisée.',
                 ], 404);
             }
 
-            if ($qte > $cuve->qt_actuelle) {
-                return response()->json([
-                    'status'  => 409,
-                    'message' => 'Stock insuffisant dans la cuve.',
-                ], 409);
-            }
-
-            // 🔻 Déduction stock
-            $cuve->update([
-                'qt_actuelle' => $cuve->qt_actuelle - $qte,
-            ]);
-
-            // 🔹 Création vente
-            $vente = VenteLitre::create([
+            /**
+             * =================================================
+             * 🔹 ENREGISTREMENT LECTURE CUVE
+             * (MATIN OU SOIR)
+             * =================================================
+             */
+            $lecture = VenteLitre::create([
                 'id_cuve'     => $cuve->id,
-                'qte_vendu'   => $qte,
+                'qte_vendu'   => $niveauCuve, // 🔥 niveau réel, pas une vente
                 'commentaire' => $data['commentaire'] ?? null,
                 'status'      => true,
             ]);
@@ -113,18 +110,21 @@ class VenteLitreService
             DB::commit();
 
             return response()->json([
-                'status'  => 201,
-                'message' => 'Vente enregistrée et stock déduit.',
-                'data'    => new VenteLitreResource($vente->load('cuve.station')),
+                'status'  => 200,
+                'message' => 'Lecture de cuve enregistrée avec succès.',
+                'data'    => new VenteLitreResource(
+                    $lecture->load('cuve.station')
+                ),
             ], 201);
 
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
 
             DB::rollBack();
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Erreur lors de la création de la vente.',
+                'message' => 'Erreur lors de l’enregistrement de la lecture cuve.',
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }
@@ -151,11 +151,7 @@ class VenteLitreService
                 ], 404);
             }
 
-            if ($vente->cuve) {
-                $vente->cuve->update([
-                    'qt_actuelle' => $vente->cuve->qt_actuelle + $vente->qte_vendu,
-                ]);
-            }
+           
 
             $vente->delete();
 
