@@ -4,6 +4,7 @@ namespace App\Modules\Vente\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Vente\Requests\ApprovisionnementCuveRequest;
+use App\Modules\Vente\Requests\StoreRetourCuveRequest;
 use App\Modules\Vente\Services\ApprovisionnementCuveService;
 
 class ApprovisionnementCuveController extends Controller
@@ -40,6 +41,13 @@ class ApprovisionnementCuveController extends Controller
     public function store(ApprovisionnementCuveRequest $request)
     {
         return $this->service->store(
+            $request->validated()
+        );
+    }
+
+      public function retourcuve(StoreRetourCuveRequest $request)
+    {
+        return $this->service->retourcuve(
             $request->validated()
         );
     }

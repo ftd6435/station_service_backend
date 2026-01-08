@@ -34,6 +34,11 @@ Route::middleware(['station.db', 'auth:sanctum'])->prefix('v1/vente')->group(fun
         [ValidationVenteController::class, 'store']
     );
 
+     Route::post(
+        'retour-cuves',
+        [ApprovisionnementCuveController::class, 'retourcuve']
+    );
+
     Route::apiResource('appro', ApprovisionnementCuveController::class);
     Route::apiResource('validation', ValidationVenteController::class);
     Route::apiResource('vente-par-litre', VenteLitreController::class);

@@ -1,10 +1,8 @@
 <?php
-
 namespace App\Modules\Vente\Services;
 
 use App\Modules\Vente\Models\ApprovisionnementCuve;
 use App\Modules\Vente\Models\Cuve;
-use App\Modules\Vente\Models\Produit;
 use App\Modules\Vente\Resources\ApprovisionnementCuveResource;
 use Exception;
 use Illuminate\Support\Facades\DB;
@@ -100,6 +98,54 @@ class ApprovisionnementCuveService
             return response()->json([
                 'status'  => 500,
                 'message' => 'Erreur lors de la création de l’approvisionnement.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+    public function retourcuve(array $data)
+    {
+        try {
+
+            DB::transaction(function () use ($data, &$retour) {
+
+                /**
+                 * =================================================
+                 * 🔐 SÉCURITÉ : CUVE VISIBLE
+                 * =================================================
+                 */
+                $cuve = Cuve::visible()->lockForUpdate()->findOrFail($data['id_cuve']);
+
+                /**
+                 * =================================================
+                 * 1️⃣ CRÉATION HISTORIQUE RETOUR CUVE
+                 * =================================================
+                 */
+                $retour = ApprovisionnementCuve::create([
+                    'id_cuve'     => $data['id_cuve'],
+                    'qte_appro'   => $data['qte_appro'],
+                    'type_appro'  => 'retour_cuve', // 🔥 forcé
+                    'commentaire' => $data['commentaire'] ?? null,
+                ]);
+
+                /**
+                 * =================================================
+                 * 2️⃣ AJUSTEMENT STOCK (+)
+                 * =================================================
+                 */
+                $cuve->increment('qt_actuelle', $data['qte_appro']);
+            });
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Retour de cuve enregistré avec succès.',
+                'data'    => new ApprovisionnementCuveResource($retour),
+            ], 200);
+
+        } catch (\Throwable $e) {
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors de l’enregistrement du retour de cuve.',
                 'error'   => $e->getMessage(),
             ], 500);
         }
