@@ -153,7 +153,7 @@ class DashboardService
             ->where('created_at', '>=', Carbon::now()->subDays(30))
             ->selectRaw('
                 DATE(created_at) as date,
-                SUM(volume) as volume
+                SUM(qte_appro) as volume
             ')
             ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')
