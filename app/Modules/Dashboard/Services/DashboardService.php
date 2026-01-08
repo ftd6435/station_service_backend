@@ -3,8 +3,8 @@
 namespace App\Modules\Dashboard\Services;
 
 use App\Modules\Vente\Models\LigneVente;
+use App\Modules\Vente\Models\ApprovisionnementCuve;
 use App\Modules\Settings\Models\Pompe;
-use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class DashboardService
@@ -34,26 +34,17 @@ class DashboardService
     {
         $today = Carbon::today();
 
-        $ventes = LigneVente::visible()
-            ->where('ligne_ventes.status', true)
-            ->whereDate('ligne_ventes.created_at', $today);
-
-        $ventesDuJour = (clone $ventes)->count();
-        $volumeVendu  = (clone $ventes)->sum('ligne_ventes.qte_vendu');
-
-        // ❗ Recettes volontairement désactivées pour l’instant
-        $recettesDuJour = 0;
-
-        $totalPompes   = Pompe::visible()->count();
-        $pompesActives = Pompe::visible()->where('status', true)->count();
+        $ventesQuery = LigneVente::visible()
+            ->where('status', true)
+            ->whereDate('created_at', $today);
 
         return [
-            'ventes_du_jour'   => $ventesDuJour,
-            'recettes_du_jour' => (float) $recettesDuJour,
-            'volume_vendu'     => (float) $volumeVendu,
+            'ventes_du_jour'   => (clone $ventesQuery)->count(),
+            'recettes_du_jour' => 0.0, // caisse volontairement non branchée
+            'volume_vendu'     => (float) (clone $ventesQuery)->sum('qte_vendu'),
             'pompes_actives'   => [
-                'actives' => $pompesActives,
-                'total'   => $totalPompes,
+                'actives' => Pompe::visible()->where('status', true)->count(),
+                'total'   => Pompe::visible()->count(),
             ],
         ];
     }
@@ -68,18 +59,15 @@ class DashboardService
         $start = Carbon::now()->subDays(6)->startOfDay();
 
         return LigneVente::visible()
-            ->where('ligne_ventes.status', true)
-            ->where('ligne_ventes.created_at', '>=', $start)
-            ->selectRaw('
-                DATE(ligne_ventes.created_at) as date,
-                SUM(ligne_ventes.qte_vendu) as volume
-            ')
-            ->groupBy(DB::raw('DATE(ligne_ventes.created_at)'))
+            ->where('status', true)
+            ->where('created_at', '>=', $start)
+            ->selectRaw('DATE(created_at) as date, SUM(qte_vendu) as volume')
+            ->groupByRaw('DATE(created_at)')
             ->orderBy('date')
             ->get()
             ->map(fn ($row) => [
                 'date'    => $row->date,
-                'montant' => 0, // caisse non branchée
+                'montant' => 0.0,
                 'volume'  => (float) $row->volume,
             ])
             ->toArray();
@@ -88,30 +76,23 @@ class DashboardService
     /**
      * =================================================
      * 🔹 RÉPARTITION PAR CARBURANT
-     * (basée sur pompes.type_pompe)
      * =================================================
      */
     private function getRepartitionCarburant(): array
     {
         return LigneVente::visible()
-            ->where('ligne_ventes.status', true)
-
-            // ligne_ventes → affectations
-            ->join('affectations', 'ligne_ventes.id_affectation', '=', 'affectations.id')
-
-            // affectations → pompes
-            ->join('pompes', 'affectations.id_pompe', '=', 'pompes.id')
-
-            ->selectRaw('
-                pompes.type_pompe as type_pompe,
-                SUM(ligne_ventes.qte_vendu) as volume
-            ')
-            ->groupBy('pompes.type_pompe')
+            ->where('status', true)
+            ->whereHas('affectation.pompe', function ($q) {
+                $q->whereNotNull('type_pompe');
+            })
+            ->with('affectation.pompe:id,type_pompe')
             ->get()
-            ->map(fn ($row) => [
-                'type_pompe' => $row->type_pompe, // essence | gasoil
-                'volume'     => (float) $row->volume,
+            ->groupBy(fn ($vente) => $vente->affectation->pompe->type_pompe)
+            ->map(fn ($group, $type) => [
+                'type_pompe' => $type,
+                'volume'     => (float) $group->sum('qte_vendu'),
             ])
+            ->values()
             ->toArray();
     }
 
@@ -123,22 +104,16 @@ class DashboardService
     private function getVolumeParPompe(): array
     {
         return LigneVente::visible()
-            ->where('ligne_ventes.status', true)
-
-            ->join('affectations', 'ligne_ventes.id_affectation', '=', 'affectations.id')
-            ->join('pompes', 'affectations.id_pompe', '=', 'pompes.id')
-
-            ->selectRaw('
-                pompes.libelle as pompe,
-                SUM(ligne_ventes.qte_vendu) as volume
-            ')
-            ->groupBy('pompes.libelle')
-            ->orderByDesc('volume')
+            ->where('status', true)
+            ->with('affectation.pompe:id,libelle')
             ->get()
-            ->map(fn ($row) => [
-                'pompe'  => $row->pompe,
-                'volume' => (float) $row->volume,
+            ->groupBy(fn ($vente) => $vente->affectation->pompe->libelle)
+            ->map(fn ($group, $pompe) => [
+                'pompe'  => $pompe,
+                'volume' => (float) $group->sum('qte_vendu'),
             ])
+            ->sortByDesc('volume')
+            ->values()
             ->toArray();
     }
 
@@ -149,13 +124,10 @@ class DashboardService
      */
     private function getApprovisionnements30Jours(): array
     {
-        return DB::table('approvisionnement_cuves')
+        return ApprovisionnementCuve::visible()
             ->where('created_at', '>=', Carbon::now()->subDays(30))
-            ->selectRaw('
-                DATE(created_at) as date,
-                SUM(qte_appro) as volume
-            ')
-            ->groupBy(DB::raw('DATE(created_at)'))
+            ->selectRaw('DATE(created_at) as date, SUM(qte_appro) as volume')
+            ->groupByRaw('DATE(created_at)')
             ->orderBy('date')
             ->get()
             ->map(fn ($row) => [
