@@ -211,7 +211,7 @@ private function calculerStockJournalierParCuve(int $idCuve): array
      * 3️⃣ SORTIES (VENTES RÉELLES)
      * → issues UNIQUEMENT des ventes par index
      */
-    $sorties = DB::table('lignes_vente')
+    $sorties = DB::table('ligne_ventes')
         ->where('id_cuve', $idCuve)
         ->whereDate('created_at', $date)
         ->sum('qte_vendu');
