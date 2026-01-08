@@ -283,12 +283,112 @@ class ProduitService
 //     }
 // }
 
- public function calculerParCuve(int $idCuve): array
+//  public function calculerParCuve(int $idCuve): array
+//     {
+//         $date = Carbon::today();
+
+//         // 🔹 Sécurité : la cuve doit être visible
+//         $cuve = Cuve::visible()->find($idCuve);
+
+//         if (! $cuve) {
+//             return [
+//                 'status'  => 403,
+//                 'message' => 'Cuve non autorisée.',
+//             ];
+//         }
+
+//         /**
+//          * 1️⃣ STOCK MATIN
+//          * → première lecture cuve du jour
+//          */
+//         $stockMatin = VenteLitre::visible()
+//             ->where('id_cuve', $idCuve)
+//             ->whereDate('created_at', $date)
+//             ->orderBy('created_at', 'asc')
+//             ->value('qte_vendu') ?? 0;
+
+//         /**
+//          * 2️⃣ ENTRÉES
+//          */
+//         $entrees = ApprovisionnementCuve::visible()
+//             ->where('id_cuve', $idCuve)
+//             ->whereDate('created_at', $date)
+//             ->sum('qte_appro');
+
+//         /**
+//          * 3️⃣ SORTIES (VENTES PAR INDEX)
+//          */
+//         $sorties = LigneVente::visible()
+//             ->where('id_cuve', $idCuve)
+//             ->whereDate('created_at', $date)
+//             ->sum('qte_vendu');
+
+//         /**
+//          * 4️⃣ STOCK THÉORIQUE (EXCEL)
+//          */
+//         $stockTheorique = $stockMatin + $entrees - $sorties;
+
+//         /**
+//          * 5️⃣ STOCK PHYSIQUE SOIR
+//          */
+//         $stockPhysique = VenteLitre::visible()
+//             ->where('id_cuve', $idCuve)
+//             ->whereDate('created_at', $date)
+//             ->orderBy('created_at', 'desc')
+//             ->value('qte_vendu') ?? $stockMatin;
+
+//         /**
+//          * 6️⃣ ÉCART
+//          */
+//         $ecart = $stockPhysique - $stockTheorique;
+
+//         return [
+//             'date'            => $date->toDateString(),
+//             'id_cuve'         => $idCuve,
+//             'cuve'            => $cuve->libelle,
+//             'stock_matin'     => (float) $stockMatin,
+//             'entrees'         => (float) $entrees,
+//             'sorties'         => (float) $sorties,
+//             'stock_theorique' => (float) $stockTheorique,
+//             'stock_physique'  => (float) $stockPhysique,
+//             'ecart'           => (float) $ecart,
+//         ];
+//     }
+//     public function calculerToutesCuves(): array
+//     {
+//         $resultats = [];
+
+//         $cuves = Cuve::visible()
+//             ->where('status', true)
+//             ->orderBy('libelle')
+//             ->get();
+
+//         foreach ($cuves as $cuve) {
+//             $resultats[] = $this->calculerParCuve($cuve->id);
+//         }
+
+//         return [
+//             'status'  => 200,
+//             'message' => 'Stock journalier des cuves (logique station / Excel).',
+//             'data'    => $resultats,
+//         ];
+//     }
+
+
+
+
+public function calculerParCuve(int $idCuve): array
     {
         $date = Carbon::today();
 
-        // 🔹 Sécurité : la cuve doit être visible
-        $cuve = Cuve::visible()->find($idCuve);
+        /**
+         * =================================================
+         * 🔐 SÉCURITÉ : CUVE VISIBLE
+         * =================================================
+         */
+        $cuve = Cuve::visible()
+            ->with('station:id,libelle')
+            ->find($idCuve);
 
         if (! $cuve) {
             return [
@@ -298,8 +398,10 @@ class ProduitService
         }
 
         /**
+         * =================================================
          * 1️⃣ STOCK MATIN
          * → première lecture cuve du jour
+         * =================================================
          */
         $stockMatin = VenteLitre::visible()
             ->where('id_cuve', $idCuve)
@@ -308,7 +410,9 @@ class ProduitService
             ->value('qte_vendu') ?? 0;
 
         /**
-         * 2️⃣ ENTRÉES
+         * =================================================
+         * 2️⃣ ENTRÉES (APPROVISIONNEMENTS)
+         * =================================================
          */
         $entrees = ApprovisionnementCuve::visible()
             ->where('id_cuve', $idCuve)
@@ -316,7 +420,9 @@ class ProduitService
             ->sum('qte_appro');
 
         /**
+         * =================================================
          * 3️⃣ SORTIES (VENTES PAR INDEX)
+         * =================================================
          */
         $sorties = LigneVente::visible()
             ->where('id_cuve', $idCuve)
@@ -324,12 +430,17 @@ class ProduitService
             ->sum('qte_vendu');
 
         /**
-         * 4️⃣ STOCK THÉORIQUE (EXCEL)
+         * =================================================
+         * 4️⃣ STOCK THÉORIQUE (LOGIQUE EXCEL)
+         * =================================================
          */
         $stockTheorique = $stockMatin + $entrees - $sorties;
 
         /**
+         * =================================================
          * 5️⃣ STOCK PHYSIQUE SOIR
+         * → dernière lecture cuve du jour
+         * =================================================
          */
         $stockPhysique = VenteLitre::visible()
             ->where('id_cuve', $idCuve)
@@ -338,14 +449,78 @@ class ProduitService
             ->value('qte_vendu') ?? $stockMatin;
 
         /**
+         * =================================================
          * 6️⃣ ÉCART
+         * =================================================
          */
         $ecart = $stockPhysique - $stockTheorique;
 
+        /**
+         * =================================================
+         * 👥 DONNÉES OPÉRATIONNELLES
+         * (pompes + pompistes via affectation.user)
+         * =================================================
+         */
+        $ventes = LigneVente::visible()
+            ->with([
+                'affectation.pompe:id,libelle',
+                'affectation.user:id,name,email,telephone',
+            ])
+            ->where('id_cuve', $idCuve)
+            ->whereDate('created_at', $date)
+            ->get();
+
+        /**
+         * 🔹 Pompes utilisées
+         */
+        $pompes = $ventes
+            ->pluck('affectation.pompe')
+            ->filter()
+            ->unique('id')
+            ->values()
+            ->map(fn ($p) => [
+                'id'      => $p->id,
+                'libelle' => $p->libelle,
+            ])
+            ->toArray();
+
+        /**
+         * 🔹 Pompistes (vérité terrain = affectation.user)
+         */
+        $pompistes = $ventes
+            ->pluck('affectation.user')
+            ->filter()
+            ->unique('id')
+            ->values()
+            ->map(fn ($u) => [
+                'id'        => $u->id,
+                'name'      => $u->name,
+                'email'     => $u->email,
+                'telephone' => $u->telephone,
+            ])
+            ->toArray();
+
+        /**
+         * =================================================
+         * 📤 RÉPONSE FINALE
+         * =================================================
+         */
         return [
-            'date'            => $date->toDateString(),
-            'id_cuve'         => $idCuve,
-            'cuve'            => $cuve->libelle,
+            'date' => $date->toDateString(),
+
+            'station' => [
+                'id'      => $cuve->station->id,
+                'libelle' => $cuve->station->libelle,
+            ],
+
+            'cuve' => [
+                'id'      => $cuve->id,
+                'libelle' => $cuve->libelle,
+            ],
+
+            'pompes'    => $pompes,
+            'pompistes' => $pompistes,
+
             'stock_matin'     => (float) $stockMatin,
             'entrees'         => (float) $entrees,
             'sorties'         => (float) $sorties,
@@ -354,6 +529,12 @@ class ProduitService
             'ecart'           => (float) $ecart,
         ];
     }
+
+    /**
+     * =================================================
+     * 🔹 STOCK JOURNALIER DE TOUTES LES CUVES VISIBLES
+     * =================================================
+     */
     public function calculerToutesCuves(): array
     {
         $resultats = [];
@@ -373,9 +554,6 @@ class ProduitService
             'data'    => $resultats,
         ];
     }
-
-
-
 
 
 }
