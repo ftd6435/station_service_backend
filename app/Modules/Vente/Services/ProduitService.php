@@ -200,25 +200,25 @@ class ProduitService
         $date = $lastDate
             ? Carbon::parse($lastDate)->toDateString()
             : Carbon::today()->toDateString();
-
+//theorique
         $stockMatin = VenteLitre::visible()
             ->where('id_cuve', $idCuve)
             ->whereDate('created_at', $date)
             ->orderBy('created_at', 'asc')
             ->value('qte_vendu') ?? 0;
-
+    //reel
         $entrees = ApprovisionnementCuve::visible()
             ->where('id_cuve', $idCuve)
             ->whereDate('created_at', $date)
             ->where('type_appro', 'approvisionnement')
             ->sum('qte_appro');
-
+     //reel
         $retourCuve = ApprovisionnementCuve::visible()
             ->where('id_cuve', $idCuve)
             ->whereDate('created_at', $date)
             ->where('type_appro', 'retour_cuve')
             ->sum('qte_appro');
-
+     //reel
         $sorties = LigneVente::visible()
             ->where('id_cuve', $idCuve)
             ->whereDate('created_at', $date)

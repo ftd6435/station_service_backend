@@ -12,6 +12,7 @@ class ApprovisionnementCuveResource extends JsonResource
         return [
             'id'          => $this->id,
             'qte_appro'   => $this->qte_appro,
+            'type'   => $this->type_appro,
             'pu_unitaire' => $this->pu_unitaire,
             'commentaire' => $this->commentaire,
 

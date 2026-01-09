@@ -26,7 +26,7 @@ return new class extends Migration
              * =================================================
              */
             $table->decimal('qte_appro', 15, 2);
-            $table->decimal('pu_unitaire', 15, 2);
+            $table->decimal('pu_unitaire', 15, 2)->nullable();
             $table->text('commentaire')->nullable();
 
             /**
