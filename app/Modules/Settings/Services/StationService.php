@@ -1,9 +1,11 @@
 <?php
 namespace App\Modules\Settings\Services;
 
+use App\Modules\Caisse\Models\Compte;
 use App\Modules\Settings\Models\Station;
 use App\Modules\Settings\Resources\StationResource;
 use Exception;
+use Illuminate\Support\Facades\DB;
 
 class StationService
 {
@@ -99,25 +101,71 @@ class StationService
      * 🔹 CRÉATION
      * =================================================
      */
+    // public function store(array $data)
+    // {
+    //     try {
+
+    //         $station = Station::create($data);
+
+    //         return response()->json([
+    //             'status'  => 200,
+    //             'message' => 'Station créée avec succès.',
+    //             'data'    => new StationResource($station),
+    //         ]);
+
+    //     } catch (Exception $e) {
+
+    //         return response()->json([
+    //             'status'  => 500,
+    //             'message' => 'Erreur lors de la création de la station.',
+    //             'error'   => $e->getMessage(),
+    //         ]);
+    //     }
+    // }
+
     public function store(array $data)
     {
+        DB::beginTransaction();
+
         try {
 
+            /**
+             * =================================================
+             * 1️⃣ CRÉATION STATION
+             * =================================================
+             */
             $station = Station::create($data);
+
+            /**
+             * =================================================
+             * 2️⃣ CRÉATION COMPTE STATION (AUTO)
+             * =================================================
+             */
+            $compte = Compte::create([
+                'id_station' => $station->id,
+                'libelle'    => "Compte principal - {$station->libelle}",
+                'numero'      => 'CPT-' . str_pad($station->id, 4, '0', STR_PAD_LEFT),
+                'commentaire' => "Compte de la station {$station->libelle}",
+                'solde_initial' => 0,
+            ]);
+
+            DB::commit();
 
             return response()->json([
                 'status'  => 200,
-                'message' => 'Station créée avec succès.',
-                'data'    => new StationResource($station),
-            ]);
+                'message' => 'Station et compte créés avec succès.',
 
-        } catch (Exception $e) {
+            ], 200);
+
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
 
             return response()->json([
                 'status'  => 500,
                 'message' => 'Erreur lors de la création de la station.',
                 'error'   => $e->getMessage(),
-            ]);
+            ], 500);
         }
     }
 

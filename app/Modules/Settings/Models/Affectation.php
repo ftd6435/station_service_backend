@@ -108,7 +108,7 @@ class Affectation extends Model
     public function station(): BelongsTo
     {
         return $this->belongsTo(Station::class, 'id_station');
-    }
+
 
     public function pompe(): BelongsTo
     {
