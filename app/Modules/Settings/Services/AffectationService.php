@@ -312,7 +312,7 @@ public function store(array $data)
             }
 
             // 🔒 Cohérence carburant (CUVE = vérité)
-            if ($cuve->type_cuve !== $pompe->type_cuve) {
+            if ($cuve->type_cuve !== $pompe->type_pompe) {
                 DB::rollBack();
 
                 return response()->json([
